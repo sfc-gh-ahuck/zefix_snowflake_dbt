@@ -3,11 +3,14 @@
     materialized='incremental',
     unique_key='uid',
     on_schema_change='fail',
+    incremental_strategy='append',
     post_hook="ALTER TABLE {{ this }} ADD COLUMN IF NOT EXISTS _loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()"
   )
 }}
 
--- Bronze layer: Extract JSON fields from raw variant data
+-- Bronze layer: Raw incremental data extraction (append-only)
+-- Preserves source data characteristics including potential duplicates
+-- Deduplication handled downstream in Silver layer
 SELECT 
     -- Metadata fields
     CURRENT_TIMESTAMP() AS _loaded_at,
@@ -66,6 +69,7 @@ SELECT
 
 FROM {{ source('zefix_raw', 'raw') }}
 WHERE content IS NOT NULL 
+  AND content:uid IS NOT NULL
   AND content:shabDate IS NOT NULL
 
 {% if is_incremental() %}
