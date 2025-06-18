@@ -3,8 +3,7 @@
     materialized='incremental',
     unique_key='uid',
     on_schema_change='fail',
-    incremental_strategy='append',
-    post_hook="ALTER TABLE {{ this }} ADD COLUMN IF NOT EXISTS _loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()"
+    incremental_strategy='append'
   )
 }}
 
