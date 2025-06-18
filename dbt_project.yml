@@ -17,9 +17,16 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+# Documentation configurations
+docs-paths: ["docs"]
+
 # Model configurations
 models:
   zefix_data_platform:
+    # Enable documentation persistence for all models
+    +persist_docs:
+      relation: true
+      columns: true
     # Bronze layer - raw data with minimal transformations
     bronze:
       +materialized: table
@@ -40,4 +47,14 @@ tests:
 # Snapshot configurations
 snapshots:
   zefix_data_platform:
-    +target_schema: snapshots 
+    +target_schema: snapshots
+    +persist_docs:
+      relation: true
+      columns: true
+
+# Seed configurations
+seeds:
+  zefix_data_platform:
+    +persist_docs:
+      relation: true
+      columns: true 
