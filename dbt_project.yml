@@ -27,15 +27,15 @@ models:
     +persist_docs:
       relation: true
       columns: true
-    # Bronze layer - raw data with minimal transformations
+    # Bronze layer - incremental raw data extraction
     bronze:
-      +materialized: table
-    # Silver layer - cleaned and structured data
+      +materialized: incremental
+    # Silver layer - cleaned and structured data (incremental)
     silver:
-      +materialized: table
-    # Gold layer - business logic and aggregated data
+      +materialized: incremental
+    # Gold layer - business logic and aggregated data (incremental)
     gold:
-      +materialized: table
+      +materialized: incremental
 
 # Test configurations
 tests:
