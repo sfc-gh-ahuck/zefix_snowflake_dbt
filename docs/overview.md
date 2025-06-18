@@ -67,16 +67,6 @@ All models in this project use `shabDate` (SHAB publication date) as the increme
 - Provides resilience against data quality issues
 - Maintains referential integrity across layers
 
-### Implementation
-```sql
-{% if is_incremental() %}
-  AND shab_date >= (
-    SELECT DATEADD('day', -1, MAX(shab_date)) 
-    FROM {{ this }}
-  )
-{% endif %}
-```
-
 {% enddocs %}
 
 {% docs legal_forms %}
