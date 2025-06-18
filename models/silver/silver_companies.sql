@@ -8,7 +8,45 @@
   )
 }}
 
--- Silver layer: Cleaned and structured company data
+-- Silver layer: Cleaned and structured company data with comprehensive deduplication
+-- Primary deduplication point since Bronze uses append-only strategy
+WITH bronze_data AS (
+  SELECT *
+  FROM {{ ref('bronze_zefix_companies') }}
+  WHERE company_name IS NOT NULL 
+    AND shab_date IS NOT NULL
+
+  {% if is_incremental() %}
+    -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
+    AND TRY_TO_DATE(shab_date, 'YYYY-MM-DD') >= (
+      SELECT DATEADD('day', -1, MAX(shab_date)) 
+      FROM {{ this }}
+    )
+  {% endif %}
+),
+
+-- Comprehensive deduplication with business logic prioritization
+deduplicated_bronze AS (
+  SELECT *,
+    ROW_NUMBER() OVER (
+      PARTITION BY uid 
+      ORDER BY 
+        -- Prioritize most recent SHAB date (latest business activity)
+        TRY_TO_DATE(shab_date, 'YYYY-MM-DD') DESC NULLS LAST,
+        -- Then most recent load time (freshest data)
+        _loaded_at DESC,
+        -- Then content hash for deterministic tie-breaking
+        _content_hash DESC
+    ) AS row_num,
+    
+    -- Additional metrics for data quality insights
+    COUNT(*) OVER (PARTITION BY uid) AS duplicate_count,
+    MIN(TRY_TO_DATE(shab_date, 'YYYY-MM-DD')) OVER (PARTITION BY uid) AS first_shab_date,
+    MAX(TRY_TO_DATE(shab_date, 'YYYY-MM-DD')) OVER (PARTITION BY uid) AS latest_shab_date
+    
+  FROM bronze_data
+)
+
 SELECT 
     -- Primary key
     uid AS company_uid,
@@ -19,7 +57,7 @@ SELECT
     chid_formatted AS company_chid_formatted,
     ehraid AS company_ehraid,
     
-    -- Basic company information
+    -- Basic company information (cleaned)
     TRIM(company_name) AS company_name,
     legal_form_id,
     TRIM(legal_seat) AS legal_seat,
@@ -59,6 +97,15 @@ SELECT
         ELSE FALSE
     END AS is_deleted,
     
+    -- Data quality metrics (for monitoring and debugging)
+    duplicate_count AS source_duplicate_count,
+    first_shab_date AS first_observed_shab_date,
+    latest_shab_date AS latest_observed_shab_date,
+    CASE 
+        WHEN duplicate_count > 1 THEN TRUE 
+        ELSE FALSE 
+    END AS had_duplicates_in_source,
+    
     -- Metadata
     _loaded_at,
     _content_hash,
@@ -75,13 +122,5 @@ SELECT
     was_taken_over_by_json,
     translation_json
 
-FROM {{ ref('bronze_zefix_companies') }}
-WHERE company_name IS NOT NULL 
-
-{% if is_incremental() %}
-  -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
-  AND TRY_TO_DATE(shab_date, 'YYYY-MM-DD') >= (
-    SELECT DATEADD('day', -1, MAX(shab_date)) 
-    FROM {{ this }}
-  )
-{% endif %} 
+FROM deduplicated_bronze
+WHERE row_num = 1 
