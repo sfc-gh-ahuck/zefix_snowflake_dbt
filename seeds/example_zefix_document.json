@@ -1,0 +1,58 @@
+{
+    "address": {
+      "addon": "",
+      "careOf": "",
+      "country": "CH",
+      "houseNumber": "5a",
+      "organisation": "Actor IQ SA",
+      "poBox": "",
+      "street": "Rue d'Aoste",
+      "swissZipCode": "1920",
+      "town": "Martigny"
+    },
+    "auditFirmFor": null,
+    "auditFirms": null,
+    "branchOffices": null,
+    "cantonalExcerptWeb": "https://vb.chregister.ch/cr-portal/auszug/auszug.xhtml?uid=CHE-279.438.550",
+    "chid": "CH62130097348",
+    "chidFormatted": "CH-621-3009734-8",
+    "deleteDate": null,
+    "ehraid": 1452904,
+    "furtherMainOffices": null,
+    "hasTakenOver": null,
+    "legalFormId": 3,
+    "legalSeat": "Martigny",
+    "legalSeatId": 6136,
+    "mainOffices": null,
+    "name": "Actor IQ SA",
+    "oldNames": null,
+    "purpose": "achat et vente de terrains et d'immeubles, constructions immobilières et toutes autres activités immobilières; gestion commerciale et financière de projets, ainsi que tous services et prestations dans les domaines économiques, financiers et comptables, avec la possibilité de prises de participations",
+    "rabId": null,
+    "registerOfficeId": 621,
+    "shabDate": "2025-06-12",
+    "shabPub": [
+      {
+        "message": "<FT TYPE=\"F\">Actor IQ SA</FT>, à <FT TYPE=\"S\">Martigny</FT>, <FT TYPE=\"A\">CHE-279.438.550</FT>, société anonyme (No. FOSC 184 du 22.09.2020, Publ. 1004983769). Inscription ou modification de personne(s): de Caritat de Peruzzis, Cédric, citoyen belge, à Vex, administrateur, avec signature individuelle [précédemment: à Bridel (LU)].",
+        "mutationTypes": [
+          {
+            "id": 17,
+            "key": "aenderungorgane"
+          }
+        ],
+        "registryOfficeCanton": "VS",
+        "registryOfficeId": 621,
+        "registryOfficeJournalDate": "2025-06-06",
+        "registryOfficeJournalId": 1941,
+        "shabDate": "2025-06-12",
+        "shabId": 1006354417,
+        "shabMutationStatus": 0,
+        "shabNr": 0,
+        "shabPage": 0
+      }
+    ],
+    "status": "EXISTIEREND",
+    "translation": null,
+    "uid": "CHE279438550",
+    "uidFormatted": "CHE-279.438.550",
+    "wasTakenOverBy": null
+  }

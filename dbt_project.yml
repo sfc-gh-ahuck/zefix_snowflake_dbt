@@ -1,0 +1,43 @@
+name: 'zefix_data_platform'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'zefix_data_platform'
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Model configurations
+models:
+  zefix_data_platform:
+    # Bronze layer - raw data with minimal transformations
+    bronze:
+      +materialized: table
+      +schema: bronze
+    # Silver layer - cleaned and structured data
+    silver:
+      +materialized: table
+      +schema: silver
+    # Gold layer - business logic and aggregated data
+    gold:
+      +materialized: table
+      +schema: gold
+
+# Test configurations
+tests:
+  +store_failures: true
+
+# Snapshot configurations
+snapshots:
+  zefix_data_platform:
+    +target_schema: snapshots 

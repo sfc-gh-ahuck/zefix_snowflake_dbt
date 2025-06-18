@@ -1,0 +1,164 @@
+version: 2
+
+models:
+  - name: gold_company_overview
+    description: "Gold layer table providing comprehensive company overview with business metrics"
+    columns:
+      - name: company_uid
+        description: "Primary key - Unique Company Identification"
+        tests:
+          - not_null
+          - unique
+      - name: company_uid_formatted
+        description: "Human-readable formatted UID"
+      - name: company_chid
+        description: "Company House Identification"
+      - name: company_chid_formatted
+        description: "Formatted CHID"
+      - name: company_name
+        description: "Official company name"
+        tests:
+          - not_null
+      - name: company_status
+        description: "Current company status"
+      - name: is_active
+        description: "Whether the company is currently active"
+      - name: is_deleted
+        description: "Whether the company has been deleted"
+      - name: legal_form_id
+        description: "Numeric legal form identifier"
+      - name: legal_form_name
+        description: "Human-readable legal form name in German"
+      - name: legal_seat
+        description: "Legal domicile of the company"
+      - name: full_address
+        description: "Concatenated street address"
+      - name: address_zip_code
+        description: "Swiss postal code"
+      - name: address_town
+        description: "Town/city location"
+      - name: address_country
+        description: "Country code"
+      - name: company_purpose
+        description: "Business purpose description"
+      - name: purpose_length
+        description: "Character length of purpose description (complexity metric)"
+      - name: last_shab_date
+        description: "Most recent SHAB publication date"
+      - name: delete_date
+        description: "Company deletion date if applicable"
+      - name: total_shab_publications
+        description: "Total number of SHAB publications for this company"
+      - name: last_publication_date
+        description: "Date of most recent publication"
+      - name: first_publication_date
+        description: "Date of first publication"
+      - name: days_since_first_publication
+        description: "Number of days since first publication (company age metric)"
+      - name: days_since_last_publication
+        description: "Number of days since last activity"
+      - name: primary_canton
+        description: "Canton where company has most activity"
+      - name: unique_cantons_count
+        description: "Number of different cantons with company activity"
+      - name: cantonal_excerpt_web_url
+        description: "Link to official cantonal register excerpt"
+      - name: last_updated_at
+        description: "Timestamp of last data update"
+
+  - name: gold_company_activity
+    description: "Gold layer table for analyzing company activities and changes over time"
+    columns:
+      - name: company_uid
+        description: "Company identifier"
+        tests:
+          - not_null
+      - name: company_name
+        description: "Company name"
+      - name: company_status
+        description: "Company status"
+      - name: legal_seat
+        description: "Legal seat location"
+      - name: shab_id
+        description: "SHAB publication identifier"
+      - name: shab_date
+        description: "Publication date"
+      - name: registry_office_canton
+        description: "Canton of registry office"
+      - name: publication_message
+        description: "Full publication text"
+      - name: mutation_count
+        description: "Number of mutations in this publication"
+      - name: mutation_types
+        description: "Array of mutation type keys"
+      - name: activity_type
+        description: |
+          Classified activity type based on publication content:
+          - Formation: Company formation/establishment
+          - Dissolution: Company dissolution
+          - Capital Change: Capital increases/decreases
+          - Address Change: Address modifications
+          - Management Change: Changes in management/administration
+          - Purpose Change: Business purpose modifications
+          - Merger: Mergers and acquisitions
+          - Other: Other types of activities
+      - name: publication_year
+        description: "Year of publication"
+      - name: publication_month
+        description: "Month of publication (1-12)"
+      - name: publication_quarter
+        description: "Quarter of publication (1-4)"
+      - name: publication_month_start
+        description: "First day of publication month (for time series analysis)"
+      - name: recency_bucket
+        description: |
+          Recency classification:
+          - Last 30 days: Very recent activity
+          - Last 90 days: Recent activity
+          - Last year: Activity within past year
+          - Older: Historical activity
+
+  - name: gold_canton_statistics
+    description: "Gold layer table with aggregated statistics by Swiss canton"
+    columns:
+      - name: canton
+        description: "Swiss canton abbreviation (e.g., ZH, BE, GE)"
+        tests:
+          - not_null
+          - unique
+      - name: total_companies
+        description: "Total number of companies registered in this canton"
+      - name: active_companies
+        description: "Number of currently active companies"
+      - name: deleted_companies
+        description: "Number of deleted/dissolved companies"
+      - name: aktiengesellschaft_count
+        description: "Number of stock companies (AG)"
+      - name: gmbh_count
+        description: "Number of limited liability companies (GmbH)"
+      - name: einzelunternehmen_count
+        description: "Number of sole proprietorships"
+      - name: verein_count
+        description: "Number of associations"
+      - name: stiftung_count
+        description: "Number of foundations"
+      - name: total_publications
+        description: "Total SHAB publications from this canton"
+      - name: active_months
+        description: "Number of months with publication activity"
+      - name: last_activity_date
+        description: "Date of most recent publication"
+      - name: first_activity_date
+        description: "Date of first publication in dataset"
+      - name: publications_last_30_days
+        description: "Publications in the last 30 days"
+      - name: publications_last_90_days
+        description: "Publications in the last 90 days"
+      - name: publications_last_year
+        description: "Publications in the last year"
+      - name: avg_publications_per_company
+        description: "Average number of publications per company"
+      - name: active_company_percentage
+        description: "Percentage of companies that are active"
+      - name: last_updated_at
+        description: "Timestamp of last data update" 

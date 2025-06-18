@@ -1,0 +1,140 @@
+version: 2
+
+models:
+  - name: silver_companies
+    description: "Silver layer table with cleaned and structured company data"
+    columns:
+      - name: company_uid
+        description: "Primary key - Unique Company Identification from ZEFIX"
+        tests:
+          - not_null
+          - unique
+      - name: company_uid_formatted
+        description: "User-friendly formatted UID with dashes"
+      - name: company_chid
+        description: "Company House Identification number"
+      - name: company_chid_formatted
+        description: "Formatted CHID with dashes"
+      - name: company_ehraid
+        description: "Electronic HR Archive Identification"
+      - name: company_name
+        description: "Cleaned official company name (trimmed whitespace)"
+        tests:
+          - not_null
+      - name: legal_form_id
+        description: "Legal form identifier (1-8, see bronze layer for mapping)"
+        tests:
+          - accepted_values:
+              values: [1, 2, 3, 4, 5, 6, 7, 8]
+      - name: legal_seat
+        description: "Cleaned legal seat location"
+      - name: legal_seat_id
+        description: "Numeric identifier for legal seat"
+      - name: register_office_id
+        description: "Commercial register office identifier"
+      - name: company_status
+        description: "Standardized company status (EXISTIEREND or GELOESCHT)"
+        tests:
+          - accepted_values:
+              values: ['EXISTIEREND', 'GELOESCHT']
+      - name: company_purpose
+        description: "Cleaned business purpose description"
+      - name: address_organisation
+        description: "Cleaned organization name in address"
+      - name: address_care_of
+        description: "Cleaned care of information"
+      - name: address_street
+        description: "Cleaned street name"
+      - name: address_house_number
+        description: "Cleaned house number"
+      - name: address_po_box
+        description: "Cleaned PO box information"
+      - name: address_zip_code
+        description: "Cleaned Swiss postal code"
+      - name: address_town
+        description: "Cleaned town/city name"
+      - name: address_country
+        description: "Standardized country code (uppercase)"
+      - name: address_addon
+        description: "Cleaned additional address information"
+      - name: shab_date
+        description: "Parsed SHAB publication date"
+      - name: delete_date
+        description: "Parsed company deletion date"
+      - name: cantonal_excerpt_web_url
+        description: "URL to cantonal register excerpt"
+      - name: rab_id
+        description: "Register of Auditing Bodies ID"
+      - name: is_active
+        description: "Boolean flag indicating if company is currently active"
+        tests:
+          - not_null
+      - name: is_deleted
+        description: "Boolean flag indicating if company has been deleted"
+        tests:
+          - not_null
+      - name: _loaded_at
+        description: "Timestamp of data loading"
+      - name: _content_hash
+        description: "Hash of original content for tracking changes"
+
+  - name: silver_shab_publications
+    description: "Silver layer table with normalized SHAB (Swiss Official Gazette) publications"
+    columns:
+      - name: company_uid
+        description: "Foreign key to company"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_companies')
+              field: company_uid
+      - name: shab_id
+        description: "Unique identifier for SHAB publication"
+        tests:
+          - not_null
+      - name: shab_number
+        description: "Official SHAB publication number"
+      - name: shab_date
+        description: "Date of SHAB publication"
+      - name: shab_page
+        description: "Page number in SHAB publication"
+      - name: shab_mutation_status
+        description: "Status code for the mutation/change"
+      - name: registry_office_id
+        description: "ID of the registry office handling the publication"
+      - name: registry_office_canton
+        description: "Swiss canton code of the registry office"
+      - name: registry_office_journal_date
+        description: "Date of entry in registry office journal"
+      - name: registry_office_journal_id
+        description: "Registry office journal identifier"
+      - name: publication_message
+        description: "Full text of the SHAB publication message"
+      - name: mutation_types_json
+        description: "JSON array of mutation types for this publication"
+
+  - name: silver_mutation_types
+    description: "Silver layer table with individual mutation types from SHAB publications"
+    columns:
+      - name: company_uid
+        description: "Foreign key to company"
+        tests:
+          - not_null
+      - name: shab_id
+        description: "Foreign key to SHAB publication"
+        tests:
+          - not_null
+      - name: mutation_type_id
+        description: "Numeric identifier for the type of mutation/change"
+      - name: mutation_type_key
+        description: |
+          Key describing the type of mutation:
+          - aenderungorgane: Change in management/organs
+          - kapitalerhoehung: Capital increase
+          - adressaenderung: Address change
+          - zweckaenderung: Purpose change
+          - And other mutation types as defined by Swiss commercial register
+      - name: shab_date
+        description: "Date of the SHAB publication"
+      - name: registry_office_canton
+        description: "Canton of the registry office" 

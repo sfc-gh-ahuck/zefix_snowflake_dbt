@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: zefix_raw
+    description: "Raw ZEFIX data from the Swiss Commercial Register"
+    database: ZEFIX
+    schema: PUBLIC
+    tables:
+      - name: raw
+        description: "Raw ZEFIX company data stored as variant JSON"
+        columns:
+          - name: content
+            description: "JSON variant containing company information from ZEFIX API"
+            data_type: variant
+            tests:
+              - not_null 

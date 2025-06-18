@@ -1,0 +1,19 @@
+zefix_data_platform:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: 'not needed'
+      user: 'not needed'
+      role: accountadmin
+      database: ZEFIX
+      schema: PUBLIC
+      warehouse: COMPUTE_WH
+    prod:
+      type: snowflake
+      account: 'not needed'
+      user: 'not needed'
+      role: accountadmin
+      database: ZEFIX
+      schema: PUBLIC
+      warehouse: COMPUTE_WH
