@@ -1,6 +1,10 @@
 {{
   config(
-    materialized='table'
+    materialized='incremental',
+    unique_key='canton',
+    on_schema_change='fail',
+    incremental_strategy='merge',
+    merge_exclude_columns=['last_updated_at']
   )
 }}
 
@@ -42,6 +46,20 @@ SELECT
 FROM {{ ref('silver_companies') }} AS c
 LEFT JOIN {{ ref('silver_shab_publications') }} AS p
     ON c.company_uid = p.company_uid
+
+{% if is_incremental() %}
+-- Incremental logic: include companies that have had recent publications or updates
+WHERE (
+  p.shab_date >= (
+    SELECT DATEADD('day', -1, MAX(last_activity_date)) 
+    FROM {{ this }}
+  )
+  OR c.shab_date >= (
+    SELECT DATEADD('day', -1, MAX(last_activity_date)) 
+    FROM {{ this }}
+  )
+)
+{% endif %}
 
 GROUP BY COALESCE(p.registry_office_canton, 'Unknown')
 ORDER BY total_companies DESC 

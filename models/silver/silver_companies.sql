@@ -1,6 +1,10 @@
 {{
   config(
-    materialized='table'
+    materialized='incremental',
+    unique_key='company_uid',
+    on_schema_change='fail',
+    incremental_strategy='merge',
+    merge_exclude_columns=['_loaded_at', '_content_hash']
   )
 }}
 
@@ -73,3 +77,11 @@ SELECT
 
 FROM {{ ref('bronze_zefix_companies') }}
 WHERE company_name IS NOT NULL 
+
+{% if is_incremental() %}
+  -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
+  AND TRY_TO_DATE(shab_date, 'YYYY-MM-DD') >= (
+    SELECT DATEADD('day', -1, MAX(shab_date)) 
+    FROM {{ this }}
+  )
+{% endif %} 

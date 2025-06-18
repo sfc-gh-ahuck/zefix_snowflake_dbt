@@ -1,6 +1,8 @@
 {{
   config(
-    materialized='table',
+    materialized='incremental',
+    unique_key='uid',
+    on_schema_change='fail',
     post_hook="ALTER TABLE {{ this }} ADD COLUMN IF NOT EXISTS _loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()"
   )
 }}
@@ -64,3 +66,12 @@ SELECT
 
 FROM {{ source('zefix_raw', 'raw') }}
 WHERE content IS NOT NULL 
+  AND content:shabDate IS NOT NULL
+
+{% if is_incremental() %}
+  -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
+  AND TRY_TO_DATE(content:shabDate::string, 'YYYY-MM-DD') >= (
+    SELECT DATEADD('day', -1, MAX(TRY_TO_DATE(shab_date, 'YYYY-MM-DD'))) 
+    FROM {{ this }}
+  )
+{% endif %} 

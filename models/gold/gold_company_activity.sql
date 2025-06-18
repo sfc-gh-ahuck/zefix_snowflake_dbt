@@ -1,6 +1,10 @@
 {{
   config(
-    materialized='table'
+    materialized='incremental',
+    unique_key=['company_uid', 'shab_id'],
+    on_schema_change='fail',
+    incremental_strategy='merge',
+    merge_exclude_columns=['_loaded_at']
   )
 }}
 
@@ -61,7 +65,24 @@ LEFT JOIN (
         COUNT(*) AS mutation_count,
         ARRAY_AGG(DISTINCT mutation_type_key) AS mutation_types
     FROM {{ ref('silver_mutation_types') }}
+    
+    {% if is_incremental() %}
+    -- Filter mutations for incremental load
+    WHERE shab_date >= (
+      SELECT DATEADD('day', -1, MAX(shab_date)) 
+      FROM {{ this }}
+    )
+    {% endif %}
+    
     GROUP BY company_uid, shab_id
 ) AS mut_agg ON p.company_uid = mut_agg.company_uid AND p.shab_id = mut_agg.shab_id
 
 WHERE c.is_active = TRUE 
+
+{% if is_incremental() %}
+  -- Incremental logic: only process records with shab_date >= max shab_date in target table - 1 day (for overlap)
+  AND p.shab_date >= (
+    SELECT DATEADD('day', -1, MAX(shab_date)) 
+    FROM {{ this }}
+  )
+{% endif %} 

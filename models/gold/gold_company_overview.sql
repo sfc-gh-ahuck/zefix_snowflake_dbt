@@ -1,6 +1,10 @@
 {{
   config(
-    materialized='table'
+    materialized='incremental',
+    unique_key='company_uid',
+    on_schema_change='fail',
+    incremental_strategy='merge',
+    merge_exclude_columns=['last_updated_at']
   )
 }}
 
@@ -72,5 +76,22 @@ LEFT JOIN (
         MODE(registry_office_canton) AS primary_canton,
         COUNT(DISTINCT registry_office_canton) AS unique_cantons_count
     FROM {{ ref('silver_shab_publications') }}
+    
+    {% if is_incremental() %}
+    -- Filter publications for incremental load
+    WHERE shab_date >= (
+      SELECT DATEADD('day', -1, MAX(last_shab_date)) 
+      FROM {{ this }}
+    )
+    {% endif %}
+    
     GROUP BY company_uid
-) AS shab_stats ON c.company_uid = shab_stats.company_uid 
+) AS shab_stats ON c.company_uid = shab_stats.company_uid
+
+{% if is_incremental() %}
+-- Incremental logic: only process companies with shabDate >= max shabDate in target table - 1 day (for overlap)
+WHERE c.shab_date >= (
+  SELECT DATEADD('day', -1, MAX(last_shab_date)) 
+  FROM {{ this }}
+)
+{% endif %} 

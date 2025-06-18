@@ -1,6 +1,10 @@
 {{
   config(
-    materialized='table'
+    materialized='incremental',
+    unique_key=['company_uid', 'shab_id', 'mutation_type_id'],
+    on_schema_change='fail',
+    incremental_strategy='merge',
+    merge_exclude_columns=['_loaded_at', '_content_hash']
   )
 }}
 
@@ -24,3 +28,11 @@ FROM {{ ref('silver_shab_publications') }} AS pub,
 LATERAL FLATTEN(input => pub.mutation_types_json) AS mut
 
 WHERE pub.mutation_types_json IS NOT NULL 
+
+{% if is_incremental() %}
+  -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
+  AND pub.shab_date >= (
+    SELECT DATEADD('day', -1, MAX(shab_date)) 
+    FROM {{ this }}
+  )
+{% endif %} 

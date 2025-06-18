@@ -1,6 +1,10 @@
 {{
   config(
-    materialized='table'
+    materialized='incremental',
+    unique_key=['company_uid', 'shab_id'],
+    on_schema_change='fail',
+    incremental_strategy='merge',
+    merge_exclude_columns=['_loaded_at', '_content_hash']
   )
 }}
 
@@ -36,3 +40,11 @@ FROM {{ ref('bronze_zefix_companies') }} AS base,
 LATERAL FLATTEN(input => base.shab_publications_json) AS pub
 
 WHERE shab_publications_json IS NOT NULL 
+
+{% if is_incremental() %}
+  -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
+  AND TRY_TO_DATE(pub.value:shabDate::string, 'YYYY-MM-DD') >= (
+    SELECT DATEADD('day', -1, MAX(shab_date)) 
+    FROM {{ this }}
+  )
+{% endif %} 
