@@ -30,15 +30,12 @@ models:
     # Bronze layer - raw data with minimal transformations
     bronze:
       +materialized: table
-      +schema: bronze
     # Silver layer - cleaned and structured data
     silver:
       +materialized: table
-      +schema: silver
     # Gold layer - business logic and aggregated data
     gold:
       +materialized: table
-      +schema: gold
 
 # Test configurations
 tests:

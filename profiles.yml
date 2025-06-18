@@ -7,7 +7,7 @@ zefix_data_platform:
       user: 'not needed'
       role: accountadmin
       database: ZEFIX
-      schema: PUBLIC
+      schema: DEV
       warehouse: COMPUTE_WH
     prod:
       type: snowflake
@@ -15,5 +15,5 @@ zefix_data_platform:
       user: 'not needed'
       role: accountadmin
       database: ZEFIX
-      schema: PUBLIC
+      schema: PROD
       warehouse: COMPUTE_WH
