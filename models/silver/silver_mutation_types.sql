@@ -8,31 +8,71 @@
   )
 }}
 
--- Silver layer: Mutation types from SHAB publications
-SELECT 
+-- Silver layer: Extract and normalize mutation types from SHAB publications
+WITH publications_data AS (
+  SELECT *
+  FROM {{ ref('silver_shab_publications') }}
+  WHERE mutation_types_json IS NOT NULL
+    AND company_uid IS NOT NULL
+    AND shab_id IS NOT NULL
+
+  {% if is_incremental() %}
+    -- Incremental logic: only process records with shab_date >= max shab_date in target table - 1 day (for overlap)
+    AND shab_date >= (
+      SELECT DATEADD('day', -1, MAX(shab_date)) 
+      FROM {{ this }}
+    )
+  {% endif %}
+),
+
+flattened_mutations AS (
+  SELECT 
     -- Foreign keys
     pub.company_uid,
     pub.shab_id,
     
-    -- Mutation type details
-    mut.value:id::number AS mutation_type_id,
-    mut.value:key::string AS mutation_type_key,
+    -- Mutation type details (extracted from JSON)
+    mut.value:id::string AS mutation_type_id_raw,
+    mut.value:key::string AS mutation_type_key_raw,
     
     -- Metadata from parent publication
     pub.shab_date,
     pub.registry_office_canton,
     pub._loaded_at,
     pub._content_hash
+    
+  FROM publications_data AS pub,
+  LATERAL FLATTEN(input => pub.mutation_types_json) AS mut
+  
+  WHERE mut.value:id IS NOT NULL
+),
 
-FROM {{ ref('silver_shab_publications') }} AS pub,
-LATERAL FLATTEN(input => pub.mutation_types_json) AS mut
+deduplicated_mutations AS (
+  SELECT *,
+    ROW_NUMBER() OVER (
+      PARTITION BY company_uid, shab_id, mutation_type_id_raw
+      ORDER BY 
+        shab_date DESC NULLS LAST,
+        _loaded_at DESC,
+        _content_hash DESC
+    ) AS row_num
+  FROM flattened_mutations
+)
 
-WHERE pub.mutation_types_json IS NOT NULL 
+SELECT 
+    -- Foreign keys
+    company_uid,
+    shab_id,
+    
+    -- Mutation type details (cleaned and typed)
+    TRY_TO_NUMBER(mutation_type_id_raw) AS mutation_type_id,
+    TRIM(mutation_type_key_raw) AS mutation_type_key,
+    
+    -- Metadata from parent publication
+    shab_date,
+    registry_office_canton,
+    _loaded_at,
+    _content_hash
 
-{% if is_incremental() %}
-  -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
-  AND pub.shab_date >= (
-    SELECT DATEADD('day', -1, MAX(shab_date)) 
-    FROM {{ this }}
-  )
-{% endif %} 
+FROM deduplicated_mutations
+WHERE row_num = 1 
