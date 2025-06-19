@@ -78,12 +78,12 @@ All models in this project use `LOADED_AT` (timestamp when record was loaded int
 
 ### Implementation Pattern
 ```sql
-{% if is_incremental() %}
+{{ "{% if is_incremental() %}" }}
   AND loaded_at > (
     SELECT MAX(_loaded_at) 
-    FROM {{ this }}
+    FROM {{ "{{ this }}" }}
   )
-{% endif %}
+{{ "{% endif %}" }}
 ```
 
 {% enddocs %}
