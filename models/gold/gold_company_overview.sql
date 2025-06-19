@@ -59,7 +59,7 @@ SELECT
     c._loaded_at AS last_updated_at
 
 FROM {{ ref('silver_companies') }} AS c
-LEFT JOIN {{ ref('legal_forms') }} AS lf
+LEFT JOIN {{ ref('silver_legal_forms') }} AS lf
     ON c.legal_form_id = lf.legal_form_id
 LEFT JOIN (
     SELECT 

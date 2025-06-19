@@ -126,6 +126,6 @@ SELECT
     translation_json
 
 FROM deduplicated_bronze
-LEFT JOIN {{ ref('legal_forms') }} AS lf
-    ON legal_form_id = lf.legal_form_id
+LEFT JOIN {{ ref('silver_legal_forms') }} AS lf
+    ON deduplicated_bronze.legal_form_id = lf.legal_form_id
 WHERE row_num = 1 
