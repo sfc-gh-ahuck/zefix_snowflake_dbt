@@ -221,51 +221,22 @@ METRICS (
   
   -- Geographic Concentration Metrics
   companies.companies_per_canton AS ROUND(
-    COUNT(DISTINCT companies.company_uid)::FLOAT 
-    / NULLIF(COUNT(DISTINCT publications.registry_office_canton), 0), 
+    COUNT(DISTINCT companies.company_uid)::FLOAT / 26.0,
     2
   )
     WITH SYNONYMS ('business_density_per_canton', 'regional_density', 'cantonal_concentration')
-    COMMENT = 'Average number of companies per canton',
-  
-  companies.top_canton_concentration AS ROUND(
-    COUNT(DISTINCT CASE WHEN publications.registry_office_canton IN ('ZH', 'GE', 'VD', 'BE') THEN companies.company_uid END) * 100.0
-    / NULLIF(COUNT(DISTINCT companies.company_uid), 0),
-    2
-  )
-    WITH SYNONYMS ('major_canton_share', 'geographic_concentration', 'top_regions_percentage')
-    COMMENT = 'Percentage of companies concentrated in top 4 cantons',
+    COMMENT = 'Average number of companies per canton (assuming 26 Swiss cantons)',
   
   -- Business Structure Diversity
   companies.legal_form_diversity AS COUNT(DISTINCT companies.legal_form_id)
     WITH SYNONYMS ('entity_type_variety', 'business_form_diversity', 'structural_diversity')
     COMMENT = 'Number of different legal forms present',
   
-  companies.herfindahl_index AS ROUND(
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 1 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2) +
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 2 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2) +
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 3 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2) +
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 4 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2) +
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 5 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2) +
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 6 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2) +
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 7 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2) +
-    POWER(COUNT(DISTINCT CASE WHEN companies.legal_form_id = 8 THEN companies.company_uid END) * 100.0 / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 2),
-    2
-  )
-    WITH SYNONYMS ('market_concentration_index', 'business_structure_concentration')
-    COMMENT = 'Herfindahl-Hirschman Index measuring concentration of legal forms (0-10000)',
+
   
-  -- Language Region Analysis
-  companies.german_region_companies AS COUNT(DISTINCT CASE WHEN publications.language_region = 'German' THEN companies.company_uid END)
-    WITH SYNONYMS ('deutschschweiz_companies', 'german_speaking_businesses')
-    COMMENT = 'Number of companies in German-speaking regions',
-  
-  companies.french_region_companies AS COUNT(DISTINCT CASE WHEN publications.language_region = 'French' THEN companies.company_uid END)
-    WITH SYNONYMS ('suisse_romande_companies', 'french_speaking_businesses')
-    COMMENT = 'Number of companies in French-speaking regions',
-  
-  companies.italian_region_companies AS COUNT(DISTINCT CASE WHEN publications.language_region = 'Italian' THEN companies.company_uid END)
-    WITH SYNONYMS ('ticino_companies', 'italian_speaking_businesses')
-    COMMENT = 'Number of companies in Italian-speaking regions'
+  -- Simplified Regional Metrics
+  companies.average_company_age AS ROUND(AVG(companies.days_since_registration), 2)
+    WITH SYNONYMS ('mean_business_age', 'average_registration_age')
+    COMMENT = 'Average age of companies in days since first registration'
 )
 COMMENT = 'Company types by canton semantic view focusing on legal form distribution across Swiss regions. Ideal for analyzing business structure patterns, regional preferences for corporate forms, and geographic concentration of different entity types.' 
