@@ -80,7 +80,21 @@ DIMENSIONS (
     WITH SYNONYMS ('business_name', 'firm_name', 'entity_name')
     COMMENT = 'Official company name',
   
-  companies.legal_form_name AS companies.legal_form_name
+  companies.legal_form_id AS companies.legal_form_id
+    WITH SYNONYMS ('entity_type_id', 'business_form_id', 'legal_entity_id')
+    COMMENT = 'Numeric legal form identifier (1-8)',
+  
+  companies.legal_form_name AS CASE 
+    WHEN companies.legal_form_id = 1 THEN 'Einzelunternehmen'
+    WHEN companies.legal_form_id = 2 THEN 'Kollektivgesellschaft'
+    WHEN companies.legal_form_id = 3 THEN 'Aktiengesellschaft'
+    WHEN companies.legal_form_id = 4 THEN 'Kommanditgesellschaft'
+    WHEN companies.legal_form_id = 5 THEN 'Gesellschaft mit beschränkter Haftung'
+    WHEN companies.legal_form_id = 6 THEN 'Genossenschaft'
+    WHEN companies.legal_form_id = 7 THEN 'Verein'
+    WHEN companies.legal_form_id = 8 THEN 'Stiftung'
+    ELSE 'Other'
+  END
     WITH SYNONYMS ('entity_type', 'business_form', 'corporate_structure')
     COMMENT = 'Type of legal entity (AG, GmbH, etc.)',
   
