@@ -46,6 +46,30 @@ RELATIONSHIPS (
     mutations (company_uid, shab_date)
     REFERENCES publications (company_uid, shab_date)
 )
+FACTS (
+  -- Company facts
+  companies.days_since_registration AS DATEDIFF('day', companies.first_observed_shab_date, CURRENT_DATE())
+    WITH SYNONYMS ('company_age_days', 'registration_age')
+    COMMENT = 'Number of days since company first registration',
+  
+  companies.purpose_length AS LENGTH(companies.company_purpose)
+    WITH SYNONYMS ('purpose_complexity', 'description_length')
+    COMMENT = 'Length of company purpose description (complexity indicator)',
+  
+  -- Publication facts
+  publications.shab_id AS publications.shab_id
+    WITH SYNONYMS ('publication_id', 'gazette_id', 'announcement_id')
+    COMMENT = 'Unique publication identifier',
+  
+  publications.days_since_publication AS DATEDIFF('day', publications.shab_date, CURRENT_DATE())
+    WITH SYNONYMS ('publication_age_days', 'days_ago')
+    COMMENT = 'Number of days since this publication',
+  
+  -- Mutation facts
+  mutations.mutation_type_id AS mutations.mutation_type_id
+    WITH SYNONYMS ('change_id', 'modification_id')
+    COMMENT = 'Numeric identifier for the mutation type'
+)
 DIMENSIONS (
   -- Company dimensions
   companies.company_uid AS companies.company_uid
@@ -148,45 +172,21 @@ DIMENSIONS (
     WITH SYNONYMS ('change_date', 'modification_date', 'event_date')
     COMMENT = 'Date of the business change publication'
 )
-FACTS (
-  -- Company facts
-  companies.days_since_registration AS DATEDIFF('day', companies.first_observed_shab_date, CURRENT_DATE())
-    WITH SYNONYMS ('company_age_days', 'registration_age')
-    COMMENT = 'Number of days since company first registration',
-  
-  companies.purpose_length AS LENGTH(companies.company_purpose)
-    WITH SYNONYMS ('purpose_complexity', 'description_length')
-    COMMENT = 'Length of company purpose description (complexity indicator)',
-  
-  -- Publication facts
-  publications.shab_id AS publications.shab_id
-    WITH SYNONYMS ('publication_id', 'gazette_id', 'announcement_id')
-    COMMENT = 'Unique publication identifier',
-  
-  publications.days_since_publication AS DATEDIFF('day', publications.shab_date, CURRENT_DATE())
-    WITH SYNONYMS ('publication_age_days', 'days_ago')
-    COMMENT = 'Number of days since this publication',
-  
-  -- Mutation facts
-  mutations.mutation_type_id AS mutations.mutation_type_id
-    WITH SYNONYMS ('change_id', 'modification_id')
-    COMMENT = 'Numeric identifier for the mutation type'
-)
 METRICS (
   -- Company Overview Metrics
-  total_companies AS COUNT(DISTINCT companies.company_uid)
+  companies.total_companies AS COUNT(DISTINCT companies.company_uid)
     WITH SYNONYMS ('company_count', 'business_count', 'entity_count')
     COMMENT = 'Total number of companies in the system',
   
-  active_companies AS COUNT(DISTINCT CASE WHEN companies.is_active = TRUE THEN companies.company_uid END)
+  companies.active_companies AS COUNT(DISTINCT CASE WHEN companies.is_active = TRUE THEN companies.company_uid END)
     WITH SYNONYMS ('operational_companies', 'current_businesses')
     COMMENT = 'Number of currently active companies',
   
-  deleted_companies AS COUNT(DISTINCT CASE WHEN companies.is_active = FALSE THEN companies.company_uid END)
+  companies.deleted_companies AS COUNT(DISTINCT CASE WHEN companies.is_active = FALSE THEN companies.company_uid END)
     WITH SYNONYMS ('dissolved_companies', 'inactive_businesses')
     COMMENT = 'Number of deleted or dissolved companies',
   
-  active_company_percentage AS ROUND(
+  companies.active_company_percentage AS ROUND(
     COUNT(DISTINCT CASE WHEN companies.is_active = TRUE THEN companies.company_uid END) * 100.0 
     / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 
     2
@@ -194,20 +194,28 @@ METRICS (
     WITH SYNONYMS ('activity_rate', 'operational_rate')
     COMMENT = 'Percentage of companies that are currently active',
   
+  companies.oldest_company_age_days AS MAX(companies.days_since_registration)
+    WITH SYNONYMS ('maximum_age', 'longest_registered')
+    COMMENT = 'Age in days of the oldest company in the system',
+  
+  companies.companies_registered_this_year AS COUNT(DISTINCT CASE WHEN companies.registration_year = EXTRACT(YEAR FROM CURRENT_DATE()) THEN companies.company_uid END)
+    WITH SYNONYMS ('new_registrations', 'current_year_formations')
+    COMMENT = 'Number of companies registered in the current year',
+  
   -- Publication Activity Metrics
-  total_publications AS COUNT(publications.shab_id)
+  publications.total_publications AS COUNT(publications.shab_id)
     WITH SYNONYMS ('publication_count', 'announcement_count', 'gazette_entries')
     COMMENT = 'Total number of SHAB publications',
   
-  recent_publications AS COUNT(CASE WHEN publications.shab_date >= CURRENT_DATE() - INTERVAL '30 days' THEN publications.shab_id END)
+  publications.recent_publications AS COUNT(CASE WHEN publications.shab_date >= CURRENT_DATE() - INTERVAL '30 days' THEN publications.shab_id END)
     WITH SYNONYMS ('monthly_publications', 'recent_activity')
     COMMENT = 'Publications in the last 30 days',
   
-  this_year_publications AS COUNT(CASE WHEN EXTRACT(YEAR FROM publications.shab_date) = EXTRACT(YEAR FROM CURRENT_DATE()) THEN publications.shab_id END)
+  publications.this_year_publications AS COUNT(CASE WHEN EXTRACT(YEAR FROM publications.shab_date) = EXTRACT(YEAR FROM CURRENT_DATE()) THEN publications.shab_id END)
     WITH SYNONYMS ('annual_publications', 'yearly_activity')
     COMMENT = 'Publications in the current year',
   
-  average_publications_per_company AS ROUND(
+  publications.average_publications_per_company AS ROUND(
     COUNT(publications.shab_id)::FLOAT 
     / NULLIF(COUNT(DISTINCT publications.company_uid), 0), 
     2
@@ -215,32 +223,26 @@ METRICS (
     WITH SYNONYMS ('publication_frequency', 'activity_ratio')
     COMMENT = 'Average number of publications per company',
   
-  -- Formation and Dissolution Activity
-  company_formations AS COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END)
+  publications.company_formations AS COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END)
     WITH SYNONYMS ('new_businesses', 'incorporations', 'startups')
     COMMENT = 'Number of company formations',
   
-  company_dissolutions AS COUNT(CASE WHEN publications.activity_type = 'Dissolution' THEN publications.shab_id END)
+  publications.company_dissolutions AS COUNT(CASE WHEN publications.activity_type = 'Dissolution' THEN publications.shab_id END)
     WITH SYNONYMS ('business_closures', 'liquidations', 'terminations')
     COMMENT = 'Number of company dissolutions',
   
-  net_company_formation AS (COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END) -
+  publications.net_company_formation AS (COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END) -
    COUNT(CASE WHEN publications.activity_type = 'Dissolution' THEN publications.shab_id END))
     WITH SYNONYMS ('business_growth', 'net_incorporations')
     COMMENT = 'Net company formation (formations minus dissolutions)',
   
-  -- Geographic Distribution
-  unique_cantons AS COUNT(DISTINCT publications.registry_office_canton)
+  publications.unique_cantons AS COUNT(DISTINCT publications.registry_office_canton)
     WITH SYNONYMS ('canton_count', 'regional_coverage')
-    COMMENT = 'Number of different Swiss cantons with registered companies',      
+    COMMENT = 'Number of different Swiss cantons with registered companies',
   
-  -- Time-based Metrics
-  oldest_company_age_days AS MAX(companies.days_since_registration)
-    WITH SYNONYMS ('maximum_age', 'longest_registered')
-    COMMENT = 'Age in days of the oldest company in the system',
-  
-  companies_registered_this_year AS COUNT(DISTINCT CASE WHEN companies.registration_year = EXTRACT(YEAR FROM CURRENT_DATE()) THEN companies.company_uid END)
-    WITH SYNONYMS ('new_registrations', 'current_year_formations')
-    COMMENT = 'Number of companies registered in the current year'
+  -- Mutation Metrics
+  mutations.total_mutations AS COUNT(mutations.mutation_type_id)
+    WITH SYNONYMS ('change_count', 'modification_count')
+    COMMENT = 'Total number of business changes/mutations'
 )
 COMMENT = 'Semantic view for ZEFIX Swiss company data - enables Cortex Analyst natural language queries about company registrations, business activities, legal forms, and geographic distribution.' 
