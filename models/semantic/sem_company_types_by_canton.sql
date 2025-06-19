@@ -154,9 +154,7 @@ METRICS (
     WITH SYNONYMS ('operational_companies', 'current_businesses', 'active_entities')
     COMMENT = 'Number of currently active companies',
   
-  companies.unique_cantons AS COUNT(DISTINCT publications.registry_office_canton)
-    WITH SYNONYMS ('canton_count', 'regional_coverage', 'geographic_spread')
-    COMMENT = 'Number of different Swiss cantons with companies',
+
   
   -- Legal Form Distribution Metrics
   companies.aktiengesellschaft_count AS COUNT(DISTINCT CASE WHEN companies.legal_form_id = 3 THEN companies.company_uid END)
