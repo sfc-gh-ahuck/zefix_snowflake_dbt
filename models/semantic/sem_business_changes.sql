@@ -32,8 +32,8 @@ RELATIONSHIPS (
     REFERENCES companies (company_uid),
   
   mutations_to_publications AS
-    mutations (company_uid, shab_date)
-    REFERENCES publications (company_uid, shab_date)
+    mutations (company_uid, shab_id)
+    REFERENCES publications (company_uid, shab_id)
 )
 FACTS (
   mutations.mutation_type_id AS mutations.mutation_type_id
