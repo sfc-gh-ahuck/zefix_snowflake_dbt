@@ -65,6 +65,10 @@ DIMENSIONS (
     WITH SYNONYMS ('city', 'location', 'municipality', 'town')
     COMMENT = 'Town/city where company is located',
   
+  companies.company_purpose AS companies.company_purpose
+    WITH SYNONYMS ('business_purpose', 'purpose', 'activity_description', 'business_activity', 'company_description')
+    COMMENT = 'Official business purpose and activity description of the company',
+  
   companies.registration_year AS EXTRACT(YEAR FROM companies.first_observed_shab_date)
     WITH SYNONYMS ('founding_year', 'incorporation_year', 'establishment_year')
     COMMENT = 'Year when company first appeared in register'
