@@ -17,7 +17,8 @@ WITH bronze_data AS (
     AND shab_date IS NOT NULL
 
   {% if is_incremental() %}
-    -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+    -- Incremental logic: only process recently loaded data
+    -- Deduplication logic will handle chronological ordering correctly
     AND _loaded_at > (
       SELECT MAX(_loaded_at) 
       FROM {{ this }}

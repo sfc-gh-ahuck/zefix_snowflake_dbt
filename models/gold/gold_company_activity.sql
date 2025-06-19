@@ -80,7 +80,7 @@ LEFT JOIN (
 WHERE c.is_active = TRUE 
 
 {% if is_incremental() %}
-  -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+  -- Incremental logic: only process recently loaded publications
   AND p._loaded_at > (
     SELECT MAX(_loaded_at) 
     FROM {{ this }}

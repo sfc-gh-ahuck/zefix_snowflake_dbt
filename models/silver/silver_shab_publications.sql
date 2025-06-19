@@ -20,7 +20,8 @@ WITH bronze_data AS (
     AND uid IS NOT NULL
 
   {% if is_incremental() %}
-    -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+    -- Incremental logic: only process recently loaded data
+    -- Individual publication deduplication will handle chronological ordering
     AND _loaded_at > (
       SELECT MAX(_loaded_at) 
       FROM {{ this }}

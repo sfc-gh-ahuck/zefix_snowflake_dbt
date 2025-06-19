@@ -17,7 +17,8 @@ WITH publications_data AS (
     AND shab_id IS NOT NULL
 
   {% if is_incremental() %}
-    -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+    -- Incremental logic: only process recently loaded data
+    -- Deduplication will handle chronological ordering per publication
     AND _loaded_at > (
       SELECT MAX(_loaded_at) 
       FROM {{ this }}

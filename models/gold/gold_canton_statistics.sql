@@ -48,7 +48,7 @@ LEFT JOIN {{ ref('silver_shab_publications') }} AS p
     ON c.company_uid = p.company_uid
 
 {% if is_incremental() %}
--- Incremental logic: include companies that have had recent updates based on loaded_at
+-- Incremental logic: include records that have been recently loaded
 WHERE (
   p._loaded_at > (
     SELECT MAX(last_updated_at) 

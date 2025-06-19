@@ -83,7 +83,7 @@ LEFT JOIN (
 ) AS shab_stats ON c.company_uid = shab_stats.company_uid
 
 {% if is_incremental() %}
--- Incremental logic: only process companies with _loaded_at >= max last_updated_at in target table
+-- Incremental logic: only process recently loaded companies
 WHERE c._loaded_at > (
   SELECT MAX(last_updated_at) 
   FROM {{ this }}
