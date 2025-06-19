@@ -8,13 +8,12 @@
 -- Set context
 USE ROLE ACCOUNTADMIN;
 
--- Create a dedicated database for sharing
-CREATE DATABASE IF NOT EXISTS ZEFIX_SHARED_DB
-COMMENT = 'Database containing ZEFIX data for sharing via Snowflake Data Sharing';
+-- Use existing ZEFIX database for sharing (no need to create new database)
+-- ZEFIX database and PROD schema already exist with dbt models
 
--- Create schema for shared objects
-CREATE SCHEMA IF NOT EXISTS ZEFIX_SHARED_DB.SHARED_DATA
-COMMENT = 'Schema containing ZEFIX semantic views and gold models for data sharing';
+-- Verify ZEFIX database and PROD schema exist
+SHOW DATABASES LIKE 'ZEFIX';
+SHOW SCHEMAS IN DATABASE ZEFIX;
 
 -- Create the share
 CREATE SHARE ZEFIX_DATA_PLATFORM_SHARE
@@ -23,35 +22,18 @@ Premium Swiss company data with AI-ready semantic views for natural language
 business intelligence. Includes comprehensive company information, geographic 
 analysis, business changes, and publication activity from the Swiss Commercial Register.';
 
--- Grant usage on database to share (for gold models and utility views)
-GRANT USAGE ON DATABASE ZEFIX_SHARED_DB TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+-- Grant usage on ZEFIX database to share
+GRANT USAGE ON DATABASE ZEFIX TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
 
--- Grant usage on schema to share (for gold models and utility views)
-GRANT USAGE ON SCHEMA ZEFIX_SHARED_DB.SHARED_DATA TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+-- Grant usage on PROD schema to share
+GRANT USAGE ON SCHEMA ZEFIX.PROD TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
 
--- Note: Semantic views will be shared directly from their source database
--- This requires additional USAGE grants on the source database/schema
+-- Using ACCOUNTADMIN for all operations (no custom role needed)
+-- ACCOUNTADMIN already has all necessary privileges
 
--- Create role for managing the share
-CREATE ROLE IF NOT EXISTS ZEFIX_SHARE_ADMIN
-COMMENT = 'Role for managing ZEFIX data share';
-
--- Grant necessary privileges to share admin role
-GRANT USAGE ON DATABASE ZEFIX_SHARED_DB TO ROLE ZEFIX_SHARE_ADMIN;
-GRANT USAGE ON SCHEMA ZEFIX_SHARED_DB.SHARED_DATA TO ROLE ZEFIX_SHARE_ADMIN;
-GRANT CREATE VIEW ON SCHEMA ZEFIX_SHARED_DB.SHARED_DATA TO ROLE ZEFIX_SHARE_ADMIN;
-GRANT CREATE TABLE ON SCHEMA ZEFIX_SHARED_DB.SHARED_DATA TO ROLE ZEFIX_SHARE_ADMIN;
-
--- Grant share privileges
-GRANT OWNERSHIP ON SHARE ZEFIX_DATA_PLATFORM_SHARE TO ROLE ZEFIX_SHARE_ADMIN;
-
--- Grant role to SYSADMIN (adjust as needed for your org)
-GRANT ROLE ZEFIX_SHARE_ADMIN TO ROLE SYSADMIN;
-
--- Switch to share admin role
-USE ROLE ZEFIX_SHARE_ADMIN;
-USE DATABASE ZEFIX_SHARED_DB;
-USE SCHEMA SHARED_DATA;
+-- Continue using ACCOUNTADMIN role
+USE DATABASE ZEFIX;
+USE SCHEMA PROD;
 
 -- Create documentation table for the share
 CREATE OR REPLACE TABLE SHARE_DOCUMENTATION (
@@ -120,7 +102,7 @@ GRANT SELECT ON TABLE SHARE_DOCUMENTATION TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
 -- Display confirmation
 SELECT 'ZEFIX Share Infrastructure Created Successfully!' as STATUS,
        'ZEFIX_DATA_PLATFORM_SHARE' as SHARE_NAME,
-       'ZEFIX_SHARED_DB.SHARED_DATA' as SCHEMA_NAME,
+       'ZEFIX.PROD' as SCHEMA_NAME,
        CURRENT_TIMESTAMP() as CREATED_AT;
 
 -- Show share details

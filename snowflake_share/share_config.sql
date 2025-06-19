@@ -15,9 +15,9 @@
 SET SOURCE_DATABASE_NAME = 'ZEFIX';  -- Your dbt target database
 SET SOURCE_SCHEMA_NAME = 'PROD';                  -- Your dbt target schema
 
--- Share infrastructure names
-SET SHARE_DATABASE_NAME = 'ZEFIX_SHARED_DB';
-SET SHARE_SCHEMA_NAME = 'SHARED_DATA';
+-- Share infrastructure names - using ZEFIX database directly
+SET SHARE_DATABASE_NAME = 'ZEFIX';
+SET SHARE_SCHEMA_NAME = 'PROD';
 SET SHARE_NAME = 'ZEFIX_DATA_PLATFORM_SHARE';
 
 -- Organization marketplace listing configuration
@@ -28,10 +28,10 @@ SET LISTING_CATEGORIES = 'Business & Finance,Government,Analytics';
 -- ROLE AND PERMISSION CONFIGURATION
 -- =====================================================
 
--- Roles for managing the share (adjust based on your org structure)
-SET SHARE_ADMIN_ROLE = 'ZEFIX_SHARE_ADMIN';
+-- Using ACCOUNTADMIN for all operations (simplified setup)
+SET SHARE_ADMIN_ROLE = 'ACCOUNTADMIN';     -- Use ACCOUNTADMIN for share management
 SET SHARE_PROVIDER_ROLE = 'ACCOUNTADMIN';  -- Role that can create shares
-SET SHARE_CONSUMER_ROLE = 'SYSADMIN';      -- Role that gets access to manage
+SET SHARE_CONSUMER_ROLE = 'ACCOUNTADMIN';  -- Role that gets access to manage
 
 -- =====================================================
 -- DATA GOVERNANCE SETTINGS

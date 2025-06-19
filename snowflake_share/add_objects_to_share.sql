@@ -5,76 +5,52 @@
 -- to the ZEFIX_DATA_PLATFORM_SHARE
 -- =====================================================
 
--- Set context
-USE ROLE ZEFIX_SHARE_ADMIN;
-USE DATABASE ZEFIX_SHARED_DB;
-USE SCHEMA SHARED_DATA;
+-- Set context - using ACCOUNTADMIN for all operations
+USE ROLE ACCOUNTADMIN;
+USE DATABASE ZEFIX;
+USE SCHEMA PROD;
 
--- Variables (adjust these to match your source database/schema)
--- You may need to modify these based on your actual dbt target configuration
-SET SOURCE_DATABASE = 'ZEFIX_DATA_PLATFORM';  -- Replace with your actual database name
-SET SOURCE_SCHEMA = 'PUBLIC';                  -- Replace with your actual schema name
+-- Load configuration variables from share_config.sql
+-- Make sure to run @share_config.sql first to set these variables
+-- Or set them directly here to match your environment:
+SET SOURCE_DATABASE = 'ZEFIX';  -- Your actual dbt target database  
+SET SOURCE_SCHEMA = 'PROD';     -- Your actual dbt target schema
 
 -- =====================================================
--- Share Semantic Views Directly
+-- Share Semantic Views and Gold Models Directly
 -- =====================================================
--- Note: Semantic views are shared directly from their source location
--- using GRANT REFERENCES ON SEMANTIC VIEW syntax per Snowflake docs:
--- https://docs.snowflake.com/en/sql-reference/sql/grant-privilege-share
-
--- Grant USAGE on source database and schema for semantic views
-GRANT USAGE ON DATABASE IDENTIFIER($SOURCE_DATABASE) TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
-GRANT USAGE ON SCHEMA IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA) TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+-- Note: All objects are now shared directly from ZEFIX.PROD database
+-- Semantic views use REFERENCES privilege, other objects use SELECT privilege
 
 -- Share semantic views directly using REFERENCES privilege
-GRANT REFERENCES ON SEMANTIC VIEW IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_company_overview') TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
-GRANT REFERENCES ON SEMANTIC VIEW IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_company_types_by_canton') TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
-GRANT REFERENCES ON SEMANTIC VIEW IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_business_changes') TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
-GRANT REFERENCES ON SEMANTIC VIEW IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_geographic_analysis') TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
-GRANT REFERENCES ON SEMANTIC VIEW IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_publication_activity') TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+GRANT REFERENCES ON SEMANTIC VIEW sem_company_overview TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+GRANT REFERENCES ON SEMANTIC VIEW sem_company_types_by_canton TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+GRANT REFERENCES ON SEMANTIC VIEW sem_business_changes TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+GRANT REFERENCES ON SEMANTIC VIEW sem_geographic_analysis TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
+GRANT REFERENCES ON SEMANTIC VIEW sem_publication_activity TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
 
 -- =====================================================
--- Create Shared Gold Layer Tables/Views
+-- Share Gold Layer Models Directly
 -- =====================================================
 
--- Create shared gold view: Company Overview
-CREATE OR REPLACE VIEW gold_company_overview AS
-SELECT * FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.gold_company_overview');
-
--- Create shared gold view: Company Activity
-CREATE OR REPLACE VIEW gold_company_activity AS
-SELECT * FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.gold_company_activity');
-
--- Create shared gold view: Canton Statistics
-CREATE OR REPLACE VIEW gold_canton_statistics AS
-SELECT * FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.gold_canton_statistics');
-
--- =====================================================
--- Add Objects to Share
--- =====================================================
-
--- Semantic views are already shared directly above using REFERENCES privilege
--- No additional grants needed for semantic views
-
--- Add gold layer views to share
+-- Share gold models directly using SELECT privilege (they're already in ZEFIX.PROD)
 GRANT SELECT ON VIEW gold_company_overview TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
 GRANT SELECT ON VIEW gold_company_activity TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
 GRANT SELECT ON VIEW gold_canton_statistics TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
 
 -- =====================================================
--- Create Sample Data Views (Optional)
+-- Create Sample Data Views for Organization Listing
 -- =====================================================
 
--- Create sample data views referencing the source semantic views
--- Note: These are local views that reference the source semantic views for preview purposes
+-- Create sample data views for consumer preview (optional)
 CREATE OR REPLACE VIEW sample_company_data AS
-SELECT * FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_company_overview') LIMIT 100;
+SELECT * FROM sem_company_overview LIMIT 100;
 
 CREATE OR REPLACE VIEW sample_geographic_data AS
-SELECT * FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_geographic_analysis') LIMIT 50;
+SELECT * FROM sem_geographic_analysis LIMIT 50;
 
 CREATE OR REPLACE VIEW sample_activity_data AS
-SELECT * FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_publication_activity') LIMIT 100;
+SELECT * FROM sem_publication_activity LIMIT 100;
 
 -- Add sample views to share
 GRANT SELECT ON VIEW sample_company_data TO SHARE ZEFIX_DATA_PLATFORM_SHARE;
@@ -91,21 +67,21 @@ SELECT
     COUNT(*) as row_count,
     COUNT(DISTINCT company_uid) as unique_companies,
     MAX(last_updated) as last_refresh
-FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_company_overview')
+FROM sem_company_overview
 UNION ALL
 SELECT 
     'sem_company_types_by_canton' as table_name,
     COUNT(*) as row_count,
     COUNT(DISTINCT canton) as unique_cantons,
     MAX(last_updated) as last_refresh
-FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_company_types_by_canton')
+FROM sem_company_types_by_canton
 UNION ALL
 SELECT 
     'sem_business_changes' as table_name,
     COUNT(*) as row_count,
     COUNT(DISTINCT company_uid) as unique_companies,
     MAX(last_updated) as last_refresh
-FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_business_changes')
+FROM sem_business_changes
 UNION ALL
 SELECT 
     'gold_company_overview' as table_name,
@@ -136,8 +112,8 @@ SHOW OBJECTS IN SHARE ZEFIX_DATA_PLATFORM_SHARE;
 
 -- Test queries to verify data access
 SELECT 'Testing semantic views...' as TEST_STATUS;
-SELECT COUNT(*) as total_companies FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_company_overview');
-SELECT COUNT(*) as total_cantons FROM IDENTIFIER($SOURCE_DATABASE || '.' || $SOURCE_SCHEMA || '.sem_company_types_by_canton');
+SELECT COUNT(*) as total_companies FROM sem_company_overview;
+SELECT COUNT(*) as total_cantons FROM sem_company_types_by_canton;
 
 SELECT 'Testing gold views...' as TEST_STATUS;
 SELECT COUNT(*) as company_records FROM gold_company_overview;
