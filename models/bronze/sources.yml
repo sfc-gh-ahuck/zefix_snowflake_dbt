@@ -1,12 +1,12 @@
 version: 2
 
 sources:
-  - name: bronze_zefix_shab
+  - name: Zefix
     description: "Raw ZEFIX data from the Swiss Commercial Register"
     database: ZEFIX
     schema: PUBLIC
     tables:
-      - name: raw
+      - name: bronze_zefix_shab
         description: "Raw ZEFIX company data stored as variant JSON"
         columns:
           - name: content
