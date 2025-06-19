@@ -59,7 +59,7 @@ SELECT
     
     -- Basic company information (cleaned)
     TRIM(company_name) AS company_name,
-    legal_form_id,
+    deduplicated_bronze.legal_form_id,
     COALESCE(lf.legal_form_name_de, 'Other') AS legal_form_name,
     lf.legal_form_name_en,
     lf.abbreviation,
