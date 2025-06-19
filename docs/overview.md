@@ -9,19 +9,20 @@ This dbt project transforms and analyzes data from the Swiss Federal Office of J
 The project follows a medallion architecture pattern:
 
 ### 🥉 Bronze Layer
-- **Purpose**: Raw data extraction and initial structuring
-- **Models**: `bronze_zefix_companies`
+- **Purpose**: Raw source data definitions only
+- **Models**: None (sources only)
 - **Schema**: `bronze`
-- **Description**: Extracts JSON data from ZEFIX API responses into structured columns with minimal transformation
+- **Description**: Contains source definitions for raw ZEFIX data - truly raw layer with no transformations
 
 ### 🥈 Silver Layer  
-- **Purpose**: Data cleaning, validation, and normalization
+- **Purpose**: First transformation layer, data cleaning, and normalization
 - **Models**: 
-  - `silver_companies` - Cleaned company master data
+  - `silver_zefix_companies_raw` - Raw extraction from JSON variants (append-only)
+  - `silver_companies` - Cleaned and deduplicated company master data
   - `silver_shab_publications` - Normalized SHAB publication records
   - `silver_mutation_types` - Individual mutation/change types
 - **Schema**: `silver`
-- **Description**: Applies business rules, data quality checks, and creates properly typed columns
+- **Description**: Applies JSON extraction, business rules, data quality checks, and deduplication
 
 ### 🥇 Gold Layer
 - **Purpose**: Business intelligence and analytics

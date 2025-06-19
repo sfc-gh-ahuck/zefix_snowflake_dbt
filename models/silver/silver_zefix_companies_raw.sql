@@ -3,13 +3,15 @@
     materialized='incremental',
     unique_key='uid',
     on_schema_change='fail',
-    incremental_strategy='append'
+    incremental_strategy='append',
+    post_hook="ALTER TABLE {{ this }} ADD COLUMN IF NOT EXISTS _loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()"
   )
 }}
 
--- Bronze layer: Raw incremental data extraction (append-only)
--- Preserves source data characteristics including potential duplicates
--- Deduplication handled downstream in Silver layer
+-- Silver layer: Raw incremental data extraction from JSON variants
+-- First transformation layer - extracts structured data from source JSON
+-- Uses append-only strategy to preserve all source data characteristics
+-- Downstream Silver models handle deduplication and further cleaning
 SELECT 
     -- Metadata fields
     CURRENT_TIMESTAMP() AS _loaded_at,

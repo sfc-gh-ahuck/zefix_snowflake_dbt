@@ -27,10 +27,10 @@ models:
     +persist_docs:
       relation: true
       columns: true
-    # Bronze layer - incremental raw data extraction
+    # Bronze layer - raw sources only (no models)
     bronze:
-      +materialized: incremental
-    # Silver layer - cleaned and structured data (incremental)
+      # Bronze contains only source definitions, no models
+    # Silver layer - first transformation layer (incremental)
     silver:
       +materialized: incremental
     # Gold layer - business logic and aggregated data (incremental)

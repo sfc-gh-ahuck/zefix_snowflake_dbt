@@ -12,7 +12,7 @@
 -- Primary deduplication point since Bronze uses append-only strategy
 WITH bronze_data AS (
   SELECT *
-  FROM {{ ref('bronze_zefix_companies') }}
+  FROM {{ ref('silver_zefix_companies_raw') }}
   WHERE company_name IS NOT NULL 
     AND shab_date IS NOT NULL
 

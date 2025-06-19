@@ -15,7 +15,7 @@ WITH bronze_data AS (
     shab_publications_json,
     _loaded_at,
     _content_hash
-  FROM {{ ref('bronze_zefix_companies') }}
+  FROM {{ ref('silver_zefix_companies_raw') }}
   WHERE shab_publications_json IS NOT NULL
     AND uid IS NOT NULL
 

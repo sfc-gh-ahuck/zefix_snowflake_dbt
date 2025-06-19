@@ -1,6 +1,58 @@
 version: 2
 
 models:
+  - name: silver_zefix_companies_raw
+    description: "Silver layer raw data extraction from ZEFIX JSON variants - first transformation layer"
+    columns:
+      - name: _loaded_at
+        description: "Timestamp when the record was loaded"
+        tests:
+          - not_null
+      - name: _content_hash
+        description: "MD5 hash of the original JSON content for change detection"
+        tests:
+          - not_null
+      - name: uid
+        description: "Unique Company Identification (UID) - Swiss enterprise identifier in format CHE-###.###.###"
+        tests:
+          - not_null
+      - name: uid_formatted
+        description: "Formatted UID with dashes for better readability"
+      - name: chid
+        description: "Company House Identification (CHID) - numeric identifier for companies"
+      - name: chid_formatted
+        description: "Formatted CHID with dashes for better readability"
+      - name: ehraid
+        description: "Electronic HR Archive Identification - internal reference number"
+      - name: company_name
+        description: "Official registered name of the company"
+        tests:
+          - not_null
+      - name: legal_form_id
+        description: "Legal form identifier (see documentation for mapping)"
+      - name: legal_seat
+        description: "Official legal seat/domicile of the company"
+      - name: legal_seat_id
+        description: "Numeric identifier for the legal seat location"
+      - name: register_office_id
+        description: "Identifier of the commercial register office"
+      - name: company_status
+        description: "Current status: EXISTIEREND (Active) or GELOESCHT (Deleted)"
+      - name: company_purpose
+        description: "Business purpose and activities as stated in commercial register"
+      - name: shab_date
+        description: "Date of publication in SHAB (Swiss Official Gazette of Commerce)"
+      - name: shab_publications_json
+        description: "JSON array containing all SHAB publications for this company"
+      - name: cantonal_excerpt_web_url
+        description: "URL to the cantonal commercial register excerpt"
+      - name: delete_date
+        description: "Date when the company was deleted/dissolved (if applicable)"
+      - name: rab_id
+        description: "Register of Auditing Bodies identifier (if applicable)"
+      - name: full_content_json
+        description: "Complete original JSON content for reference and debugging"
+
   - name: silver_companies
     description: "Silver layer table with cleaned and structured company data"
     columns:
