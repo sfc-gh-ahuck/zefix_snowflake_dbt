@@ -33,12 +33,19 @@ The project follows a medallion architecture pattern:
 - **Schema**: `gold`
 - **Description**: Provides business-ready datasets for reporting and analysis
 
+### 🌱 Seeds
+- **Purpose**: Reference data and lookup tables
+- **Seeds**:
+  - `legal_forms` - Swiss legal form mappings with German/English names and abbreviations
+- **Description**: Static reference data used across multiple models
+
 ## Key Features
 
-- **Incremental Processing**: All models support incremental updates based on `shabDate`
+- **Incremental Processing**: All models support incremental updates based on `LOADED_AT` timestamp
 - **Data Quality**: Comprehensive testing and validation at each layer
 - **Documentation**: Full documentation persisted in database comments
 - **Merge Strategy**: Proper handling of updates and inserts for incremental models
+- **Reference Data**: Centralized legal form mappings in seeds for consistency
 
 ## Data Sources
 
@@ -56,33 +63,48 @@ This platform enables analysis of:
 
 {% enddocs %}
 
-{% docs shabdate_incremental %}
+{% docs loaded_at_incremental %}
 
 ## Incremental Processing Strategy
 
-All models in this project use `shabDate` (SHAB publication date) as the incremental key with a **one-day overlap** for data resilience.
+All models in this project use `LOADED_AT` (timestamp when record was loaded into source system) as the incremental key for efficient processing.
 
-### Why One-Day Overlap?
-- Ensures data consistency during API updates
-- Handles late-arriving records gracefully  
-- Provides resilience against data quality issues
-- Maintains referential integrity across layers
+### Why LOADED_AT?
+- **Real-time Processing**: Enables immediate processing of newly loaded data
+- **Reliable Ordering**: Timestamp provides clear chronological ordering
+- **Efficient Queries**: Simple timestamp comparison for incremental logic
+- **Data Freshness**: Ensures latest data is always processed first
+- **No Overlap Needed**: Exact timestamp matching eliminates data duplication
+
+### Implementation Pattern
+```sql
+{% if is_incremental() %}
+  AND loaded_at > (
+    SELECT MAX(_loaded_at) 
+    FROM {{ this }}
+  )
+{% endif %}
+```
 
 {% enddocs %}
 
-{% docs legal_forms %}
+{% docs legal_forms_seed %}
 
-## Swiss Legal Forms
+## Legal Forms Reference Data
 
-| ID | German Name | English Translation | Abbreviation |
-|----|-------------|-------------------|--------------|
-| 1  | Einzelunternehmen | Sole Proprietorship | - |
-| 2  | Kollektivgesellschaft | General Partnership | - |
-| 3  | Aktiengesellschaft | Stock Company/Corporation | AG |
-| 4  | Kommanditgesellschaft | Limited Partnership | - |
-| 5  | Gesellschaft mit beschränkter Haftung | Limited Liability Company | GmbH |
-| 6  | Genossenschaft | Cooperative | - |
-| 7  | Verein | Association | - |
-| 8  | Stiftung | Foundation | - |
+The `legal_forms` seed contains the official Swiss legal form mappings used throughout the project.
+
+### Usage
+This seed is joined to company data in the Silver layer to provide:
+- German legal form names (`legal_form_name_de`)
+- English translations (`legal_form_name_en`) 
+- Standard abbreviations (`abbreviation`)
+- Detailed descriptions (`description`)
+
+### Benefits
+- **Consistency**: Single source of truth for legal form names
+- **Maintainability**: Easy to update legal form information
+- **Multilingual**: Supports both German and English naming
+- **Extensibility**: Can be easily extended with additional metadata
 
 {% enddocs %} 

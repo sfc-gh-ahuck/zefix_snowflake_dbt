@@ -12,8 +12,8 @@
 -- Uses append-only strategy to preserve all source data characteristics
 -- Downstream Silver models handle deduplication and further cleaning
 SELECT 
-    -- Metadata fields
-    CURRENT_TIMESTAMP() AS _loaded_at,
+    -- Metadata fields - use source LOADED_AT instead of CURRENT_TIMESTAMP
+    loaded_at AS _loaded_at,
     MD5(content::string) AS _content_hash,
     
     -- Core company identifiers
@@ -73,9 +73,9 @@ WHERE content IS NOT NULL
   AND content:shabDate IS NOT NULL
 
 {% if is_incremental() %}
-  -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
-  AND TRY_TO_DATE(content:shabDate::string, 'YYYY-MM-DD') >= (
-    SELECT DATEADD('day', -1, MAX(TRY_TO_DATE(shab_date, 'YYYY-MM-DD'))) 
+  -- Incremental logic: only process records with loaded_at >= max loaded_at in target table
+  AND loaded_at > (
+    SELECT MAX(_loaded_at) 
     FROM {{ this }}
   )
 {% endif %} 

@@ -17,9 +17,9 @@ WITH bronze_data AS (
     AND shab_date IS NOT NULL
 
   {% if is_incremental() %}
-    -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
-    AND TRY_TO_DATE(shab_date, 'YYYY-MM-DD') >= (
-      SELECT DATEADD('day', -1, MAX(shab_date)) 
+    -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+    AND _loaded_at > (
+      SELECT MAX(_loaded_at) 
       FROM {{ this }}
     )
   {% endif %}
@@ -60,6 +60,9 @@ SELECT
     -- Basic company information (cleaned)
     TRIM(company_name) AS company_name,
     legal_form_id,
+    COALESCE(lf.legal_form_name_de, 'Other') AS legal_form_name,
+    lf.legal_form_name_en,
+    lf.abbreviation,
     TRIM(legal_seat) AS legal_seat,
     legal_seat_id,
     register_office_id,
@@ -123,4 +126,6 @@ SELECT
     translation_json
 
 FROM deduplicated_bronze
+LEFT JOIN {{ ref('legal_forms') }} AS lf
+    ON legal_form_id = lf.legal_form_id
 WHERE row_num = 1 

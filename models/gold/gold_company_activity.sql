@@ -67,9 +67,9 @@ LEFT JOIN (
     FROM {{ ref('silver_mutation_types') }}
     
     {% if is_incremental() %}
-    -- Filter mutations for incremental load
-    WHERE shab_date >= (
-      SELECT DATEADD('day', -1, MAX(shab_date)) 
+    -- Filter mutations for incremental load based on loaded_at
+    WHERE _loaded_at > (
+      SELECT MAX(_loaded_at) 
       FROM {{ this }}
     )
     {% endif %}
@@ -80,9 +80,9 @@ LEFT JOIN (
 WHERE c.is_active = TRUE 
 
 {% if is_incremental() %}
-  -- Incremental logic: only process records with shab_date >= max shab_date in target table - 1 day (for overlap)
-  AND p.shab_date >= (
-    SELECT DATEADD('day', -1, MAX(shab_date)) 
+  -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+  AND p._loaded_at > (
+    SELECT MAX(_loaded_at) 
     FROM {{ this }}
   )
 {% endif %} 

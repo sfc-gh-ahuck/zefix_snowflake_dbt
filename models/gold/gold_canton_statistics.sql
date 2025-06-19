@@ -41,21 +41,21 @@ SELECT
     ROUND(COUNT(DISTINCT CASE WHEN c.is_active = TRUE THEN c.company_uid END)::FLOAT / NULLIF(COUNT(DISTINCT c.company_uid), 0) * 100, 2) AS active_company_percentage,
     
     -- Metadata
-    MAX(c._loaded_at) AS last_updated_at
+    MAX(GREATEST(c._loaded_at, p._loaded_at)) AS last_updated_at
 
 FROM {{ ref('silver_companies') }} AS c
 LEFT JOIN {{ ref('silver_shab_publications') }} AS p
     ON c.company_uid = p.company_uid
 
 {% if is_incremental() %}
--- Incremental logic: include companies that have had recent publications or updates
+-- Incremental logic: include companies that have had recent updates based on loaded_at
 WHERE (
-  p.shab_date >= (
-    SELECT DATEADD('day', -1, MAX(last_activity_date)) 
+  p._loaded_at > (
+    SELECT MAX(last_updated_at) 
     FROM {{ this }}
   )
-  OR c.shab_date >= (
-    SELECT DATEADD('day', -1, MAX(last_activity_date)) 
+  OR c._loaded_at > (
+    SELECT MAX(last_updated_at) 
     FROM {{ this }}
   )
 )

@@ -2,10 +2,10 @@ version: 2
 
 models:
   - name: silver_zefix_companies_raw
-    description: "Silver layer raw data extraction from ZEFIX JSON variants - first transformation layer"
+    description: "Silver layer raw data extraction from ZEFIX JSON variants - first transformation layer using LOADED_AT for incremental processing"
     columns:
       - name: _loaded_at
-        description: "Timestamp when the record was loaded"
+        description: "Timestamp when the record was loaded into source system (from LOADED_AT column)"
         tests:
           - not_null
       - name: _content_hash
@@ -54,7 +54,7 @@ models:
         description: "Complete original JSON content for reference and debugging"
 
   - name: silver_companies
-    description: "Silver layer table with cleaned and structured company data"
+    description: "Silver layer table with cleaned and structured company data using LOADED_AT for incremental processing"
     columns:
       - name: company_uid
         description: "Primary key - Unique Company Identification from ZEFIX"
@@ -74,10 +74,16 @@ models:
         tests:
           - not_null
       - name: legal_form_id
-        description: "Legal form identifier (1-8, see bronze layer for mapping)"
+        description: "Legal form identifier (1-8, see legal_forms seed for mapping)"
         tests:
           - accepted_values:
               values: [1, 2, 3, 4, 5, 6, 7, 8]
+      - name: legal_form_name
+        description: "German name of legal form (from legal_forms seed)"
+      - name: legal_form_name_en
+        description: "English name of legal form (from legal_forms seed)"
+      - name: abbreviation
+        description: "Legal form abbreviation (e.g., AG, GmbH) from legal_forms seed"
       - name: legal_seat
         description: "Cleaned legal seat location"
       - name: legal_seat_id
@@ -126,67 +132,104 @@ models:
         tests:
           - not_null
       - name: _loaded_at
-        description: "Timestamp of data loading"
+        description: "Timestamp of data loading from source system"
       - name: _content_hash
         description: "Hash of original content for tracking changes"
 
   - name: silver_shab_publications
-    description: "Silver layer table with normalized SHAB (Swiss Official Gazette) publications"
+    description: "Silver layer table with normalized SHAB (Swiss Official Gazette) publications using LOADED_AT for incremental processing"
     columns:
       - name: company_uid
-        description: "Foreign key to company"
+        description: "Foreign key to silver_companies"
         tests:
           - not_null
           - relationships:
               to: ref('silver_companies')
               field: company_uid
       - name: shab_id
-        description: "Unique identifier for SHAB publication"
+        description: "Unique SHAB publication identifier"
         tests:
           - not_null
       - name: shab_number
-        description: "Official SHAB publication number"
+        description: "SHAB gazette number"
       - name: shab_date
         description: "Date of SHAB publication"
-      - name: shab_page
-        description: "Page number in SHAB publication"
-      - name: shab_mutation_status
-        description: "Status code for the mutation/change"
-      - name: registry_office_id
-        description: "ID of the registry office handling the publication"
-      - name: registry_office_canton
-        description: "Swiss canton code of the registry office"
-      - name: registry_office_journal_date
-        description: "Date of entry in registry office journal"
-      - name: registry_office_journal_id
-        description: "Registry office journal identifier"
-      - name: publication_message
-        description: "Full text of the SHAB publication message"
-      - name: mutation_types_json
-        description: "JSON array of mutation types for this publication"
-
-  - name: silver_mutation_types
-    description: "Silver layer table with individual mutation types from SHAB publications"
-    columns:
-      - name: company_uid
-        description: "Foreign key to company"
         tests:
           - not_null
+      - name: shab_page
+        description: "Page number in SHAB gazette"
+      - name: shab_mutation_status
+        description: "Status code for the mutation"
+      - name: registry_office_id
+        description: "ID of the commercial register office"
+      - name: registry_office_canton
+        description: "Swiss canton abbreviation (e.g., ZH, BE, GE)"
+        tests:
+          - not_null
+      - name: registry_office_journal_date
+        description: "Date of commercial register journal entry"
+      - name: registry_office_journal_id
+        description: "Commercial register journal entry ID"
+      - name: publication_message
+        description: "Full text of the SHAB publication"
+      - name: mutation_types_json
+        description: "JSON array of mutation types for downstream processing"
+      - name: _loaded_at
+        description: "Timestamp of data loading from source system"
+      - name: _content_hash
+        description: "Hash of original content for tracking changes"
+
+  - name: silver_mutation_types
+    description: "Silver layer table with individual mutation types extracted from SHAB publications using LOADED_AT for incremental processing"
+    columns:
+      - name: company_uid
+        description: "Foreign key to silver_companies"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('silver_companies')
+              field: company_uid
       - name: shab_id
-        description: "Foreign key to SHAB publication"
+        description: "Foreign key to silver_shab_publications"
         tests:
           - not_null
       - name: mutation_type_id
-        description: "Numeric identifier for the type of mutation/change"
+        description: "Numeric identifier for the mutation type"
+        tests:
+          - not_null
       - name: mutation_type_key
-        description: |
-          Key describing the type of mutation:
-          - aenderungorgane: Change in management/organs
-          - kapitalerhoehung: Capital increase
-          - adressaenderung: Address change
-          - zweckaenderung: Purpose change
-          - And other mutation types as defined by Swiss commercial register
+        description: "Text key describing the type of mutation/change"
+        tests:
+          - not_null
       - name: shab_date
-        description: "Date of the SHAB publication"
+        description: "Date of SHAB publication (inherited from parent publication)"
       - name: registry_office_canton
-        description: "Canton of the registry office" 
+        description: "Swiss canton abbreviation (inherited from parent publication)"
+      - name: _loaded_at
+        description: "Timestamp of data loading from source system"
+      - name: _content_hash
+        description: "Hash of original content for tracking changes"
+
+seeds:
+  - name: legal_forms
+    description: "Reference data for Swiss legal forms with German/English names and abbreviations"
+    columns:
+      - name: legal_form_id
+        description: "Numeric identifier for legal form (1-8)"
+        tests:
+          - not_null
+          - unique
+      - name: legal_form_name_de
+        description: "German name of the legal form"
+        tests:
+          - not_null
+      - name: legal_form_name_en
+        description: "English translation of the legal form"
+        tests:
+          - not_null
+      - name: abbreviation
+        description: "Common abbreviation (e.g., AG, GmbH) - may be null for forms without standard abbreviations"
+      - name: description
+        description: "Detailed description of the legal form in English"
+        tests:
+          - not_null 

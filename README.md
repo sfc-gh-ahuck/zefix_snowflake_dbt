@@ -34,6 +34,9 @@ The project processes data from the ZEFIX Public API, which provides information
 - `gold_company_activity`: Company activity analysis over time
 - `gold_canton_statistics`: Canton-level aggregated statistics
 
+### Seeds
+- `legal_forms`: Swiss legal form reference data with German/English names and abbreviations
+
 ## Setup Instructions
 
 ### 1. Environment Setup
@@ -84,17 +87,17 @@ dbt docs serve
 - **EHRAID**: Electronic HR Archive Identification
 - **Legal Form ID**: Numeric identifier for company legal structure
 - **SHAB**: Swiss Official Gazette of Commerce publications
+- **LOADED_AT**: Timestamp when record was loaded into source system (TIMESTAMP_TZ)
 
 ### Legal Forms
 
-1. Einzelunternehmen (Sole Proprietorship)
-2. Kollektivgesellschaft (General Partnership)
-3. Aktiengesellschaft (Corporation/Stock Company)
-4. Kommanditgesellschaft (Limited Partnership)
-5. Gesellschaft mit beschränkter Haftung (Limited Liability Company)
-6. Genossenschaft (Cooperative)
-7. Verein (Association)
-8. Stiftung (Foundation)
+Legal form mappings are maintained in the `legal_forms` seed with:
+- German names (e.g., Aktiengesellschaft, Gesellschaft mit beschränkter Haftung)
+- English translations (e.g., Stock Company, Limited Liability Company)
+- Standard abbreviations (e.g., AG, GmbH)
+- Detailed descriptions
+
+This ensures consistency across all models and enables easy maintenance of legal form information.
 
 ## Data Quality
 
@@ -154,7 +157,13 @@ This project is based on the [ZEFIX Public API](https://www.zefix.admin.ch/Zefix
 
 ### Incremental Updates
 
-The bronze layer includes change detection using content hashing. For production deployments, consider implementing incremental models to process only new or changed records.
+All models use the `LOADED_AT` timestamp column for efficient incremental processing. This enables real-time processing of newly loaded data without the need for overlapping windows or complex change detection logic.
+
+**Incremental Strategy:**
+- **Silver Layer**: Uses `LOADED_AT > MAX(_loaded_at)` for precise incremental processing
+- **Gold Layer**: Processes records based on upstream `LOADED_AT` timestamps
+- **No Overlap**: Exact timestamp matching eliminates data duplication
+- **Real-time Ready**: Immediate processing of new source data
 
 ### Monitoring
 

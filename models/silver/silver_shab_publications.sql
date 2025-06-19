@@ -20,9 +20,9 @@ WITH bronze_data AS (
     AND uid IS NOT NULL
 
   {% if is_incremental() %}
-    -- Incremental logic: only process records with shabDate >= max shabDate in target table - 1 day (for overlap)
-    AND TRY_TO_DATE(shab_date, 'YYYY-MM-DD') >= (
-      SELECT DATEADD('day', -1, MAX(shab_date)) 
+    -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+    AND _loaded_at > (
+      SELECT MAX(_loaded_at) 
       FROM {{ this }}
     )
   {% endif %}

@@ -17,9 +17,9 @@ WITH publications_data AS (
     AND shab_id IS NOT NULL
 
   {% if is_incremental() %}
-    -- Incremental logic: only process records with shab_date >= max shab_date in target table - 1 day (for overlap)
-    AND shab_date >= (
-      SELECT DATEADD('day', -1, MAX(shab_date)) 
+    -- Incremental logic: only process records with _loaded_at >= max _loaded_at in target table
+    AND _loaded_at > (
+      SELECT MAX(_loaded_at) 
       FROM {{ this }}
     )
   {% endif %}

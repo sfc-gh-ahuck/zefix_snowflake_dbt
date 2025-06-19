@@ -28,7 +28,11 @@ models:
       - name: legal_form_id
         description: "Numeric legal form identifier"
       - name: legal_form_name
-        description: "Human-readable legal form name in German"
+        description: "German name of legal form (from legal_forms seed)"
+      - name: legal_form_name_en
+        description: "English name of legal form (from legal_forms seed)"
+      - name: abbreviation
+        description: "Legal form abbreviation (e.g., AG, GmbH)"
       - name: legal_seat
         description: "Legal domicile of the company"
       - name: full_address
@@ -119,7 +123,7 @@ models:
           - Older: Historical activity
 
   - name: gold_canton_statistics
-    description: "Gold layer table with aggregated statistics by Swiss canton"
+    description: "Gold layer table with canton-level aggregated statistics"
     columns:
       - name: canton
         description: "Swiss canton abbreviation (e.g., ZH, BE, GE)"

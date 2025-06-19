@@ -22,17 +22,9 @@ SELECT
     
     -- Legal information
     c.legal_form_id,
-    CASE 
-        WHEN c.legal_form_id = 1 THEN 'Einzelunternehmen'
-        WHEN c.legal_form_id = 2 THEN 'Kollektivgesellschaft'
-        WHEN c.legal_form_id = 3 THEN 'Aktiengesellschaft'
-        WHEN c.legal_form_id = 4 THEN 'Kommanditgesellschaft'
-        WHEN c.legal_form_id = 5 THEN 'Gesellschaft mit beschränkter Haftung'
-        WHEN c.legal_form_id = 6 THEN 'Genossenschaft'
-        WHEN c.legal_form_id = 7 THEN 'Verein'
-        WHEN c.legal_form_id = 8 THEN 'Stiftung'
-        ELSE 'Other'
-    END AS legal_form_name,
+    COALESCE(lf.legal_form_name_de, 'Other') AS legal_form_name,
+    lf.legal_form_name_en,
+    lf.abbreviation,
     c.legal_seat,
     
     -- Address
@@ -67,6 +59,8 @@ SELECT
     c._loaded_at AS last_updated_at
 
 FROM {{ ref('silver_companies') }} AS c
+LEFT JOIN {{ ref('legal_forms') }} AS lf
+    ON c.legal_form_id = lf.legal_form_id
 LEFT JOIN (
     SELECT 
         company_uid,
@@ -78,9 +72,9 @@ LEFT JOIN (
     FROM {{ ref('silver_shab_publications') }}
     
     {% if is_incremental() %}
-    -- Filter publications for incremental load
-    WHERE shab_date >= (
-      SELECT DATEADD('day', -1, MAX(last_shab_date)) 
+    -- Filter publications for incremental load based on loaded_at
+    WHERE _loaded_at > (
+      SELECT MAX(last_updated_at) 
       FROM {{ this }}
     )
     {% endif %}
@@ -89,9 +83,9 @@ LEFT JOIN (
 ) AS shab_stats ON c.company_uid = shab_stats.company_uid
 
 {% if is_incremental() %}
--- Incremental logic: only process companies with shabDate >= max shabDate in target table - 1 day (for overlap)
-WHERE c.shab_date >= (
-  SELECT DATEADD('day', -1, MAX(last_shab_date)) 
+-- Incremental logic: only process companies with _loaded_at >= max last_updated_at in target table
+WHERE c._loaded_at > (
+  SELECT MAX(last_updated_at) 
   FROM {{ this }}
 )
 {% endif %} 
