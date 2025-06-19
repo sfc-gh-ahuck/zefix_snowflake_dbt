@@ -76,7 +76,7 @@ DIMENSIONS (
     WITH SYNONYMS ('active_status', 'operational')
     COMMENT = 'Whether the company is currently active',
   
-  EXTRACT(YEAR FROM companies.first_observed_shab_date) AS companies.registration_year
+  companies.registration_year AS EXTRACT(YEAR FROM companies.first_observed_shab_date)
     WITH SYNONYMS ('founding_year', 'incorporation_year', 'establishment_year')
     COMMENT = 'Year when company first appeared in register',
   
@@ -93,11 +93,11 @@ DIMENSIONS (
     WITH SYNONYMS ('canton', 'state', 'region')
     COMMENT = 'Swiss canton handling the publication',
   
-  EXTRACT(YEAR FROM publications.shab_date) AS publications.publication_year
+  publications.publication_year AS EXTRACT(YEAR FROM publications.shab_date)
     WITH SYNONYMS ('announcement_year', 'gazette_year')
     COMMENT = 'Year of SHAB publication',
   
-  EXTRACT(QUARTER FROM publications.shab_date) AS publications.publication_quarter
+  publications.publication_quarter AS EXTRACT(QUARTER FROM publications.shab_date)
     WITH SYNONYMS ('quarter', 'period')
     COMMENT = 'Quarter of SHAB publication',
   
@@ -105,7 +105,7 @@ DIMENSIONS (
     WITH SYNONYMS ('publication_date', 'announcement_date', 'gazette_date')
     COMMENT = 'Date of SHAB publication',
   
-  CASE 
+  publications.activity_type AS CASE 
     WHEN publications.publication_message ILIKE '%gründung%' OR publications.publication_message ILIKE '%constitution%' THEN 'Formation'
     WHEN publications.publication_message ILIKE '%auflösung%' OR publications.publication_message ILIKE '%dissolution%' THEN 'Dissolution'
     WHEN publications.publication_message ILIKE '%kapital%' OR publications.publication_message ILIKE '%capital%' THEN 'Capital Change'
@@ -114,16 +114,16 @@ DIMENSIONS (
     WHEN publications.publication_message ILIKE '%zweck%' OR publications.publication_message ILIKE '%purpose%' THEN 'Purpose Change'
     WHEN publications.publication_message ILIKE '%fusion%' OR publications.publication_message ILIKE '%merger%' THEN 'Merger'
     ELSE 'Other'
-  END AS publications.activity_type
+  END
     WITH SYNONYMS ('business_activity', 'change_type', 'event_category')
     COMMENT = 'Type of business activity based on publication content',
   
-  CASE 
+  publications.recency_bucket AS CASE 
     WHEN publications.shab_date >= CURRENT_DATE() - INTERVAL '30 days' THEN 'Last 30 days'
     WHEN publications.shab_date >= CURRENT_DATE() - INTERVAL '90 days' THEN 'Last 90 days'
     WHEN publications.shab_date >= CURRENT_DATE() - INTERVAL '365 days' THEN 'Last year'
     ELSE 'Older'
-  END AS publications.recency_bucket
+  END
     WITH SYNONYMS ('recency', 'time_category', 'age_group')
     COMMENT = 'How recent the publication activity was',
   
@@ -140,7 +140,7 @@ DIMENSIONS (
     WITH SYNONYMS ('canton', 'state', 'region')
     COMMENT = 'Swiss canton handling the change',
   
-  EXTRACT(YEAR FROM mutations.shab_date) AS mutations.change_year
+  mutations.change_year AS EXTRACT(YEAR FROM mutations.shab_date)
     WITH SYNONYMS ('modification_year', 'event_year')
     COMMENT = 'Year when the business change occurred',
   
@@ -150,11 +150,11 @@ DIMENSIONS (
 )
 FACTS (
   -- Company facts
-  DATEDIFF('day', companies.first_observed_shab_date, CURRENT_DATE()) AS companies.days_since_registration
+  companies.days_since_registration AS DATEDIFF('day', companies.first_observed_shab_date, CURRENT_DATE())
     WITH SYNONYMS ('company_age_days', 'registration_age')
     COMMENT = 'Number of days since company first registration',
   
-  LENGTH(companies.company_purpose) AS companies.purpose_length
+  companies.purpose_length AS LENGTH(companies.company_purpose)
     WITH SYNONYMS ('purpose_complexity', 'description_length')
     COMMENT = 'Length of company purpose description (complexity indicator)',
   
@@ -163,7 +163,7 @@ FACTS (
     WITH SYNONYMS ('publication_id', 'gazette_id', 'announcement_id')
     COMMENT = 'Unique publication identifier',
   
-  DATEDIFF('day', publications.shab_date, CURRENT_DATE()) AS publications.days_since_publication
+  publications.days_since_publication AS DATEDIFF('day', publications.shab_date, CURRENT_DATE())
     WITH SYNONYMS ('publication_age_days', 'days_ago')
     COMMENT = 'Number of days since this publication',
   
@@ -174,72 +174,72 @@ FACTS (
 )
 METRICS (
   -- Company Overview Metrics
-  COUNT(DISTINCT companies.company_uid) AS total_companies
+  total_companies AS COUNT(DISTINCT companies.company_uid)
     WITH SYNONYMS ('company_count', 'business_count', 'entity_count')
     COMMENT = 'Total number of companies in the system',
   
-  COUNT(DISTINCT CASE WHEN companies.is_active = TRUE THEN companies.company_uid END) AS active_companies
+  active_companies AS COUNT(DISTINCT CASE WHEN companies.is_active = TRUE THEN companies.company_uid END)
     WITH SYNONYMS ('operational_companies', 'current_businesses')
     COMMENT = 'Number of currently active companies',
   
-  COUNT(DISTINCT CASE WHEN companies.is_active = FALSE THEN companies.company_uid END) AS deleted_companies
+  deleted_companies AS COUNT(DISTINCT CASE WHEN companies.is_active = FALSE THEN companies.company_uid END)
     WITH SYNONYMS ('dissolved_companies', 'inactive_businesses')
     COMMENT = 'Number of deleted or dissolved companies',
   
-  ROUND(
+  active_company_percentage AS ROUND(
     COUNT(DISTINCT CASE WHEN companies.is_active = TRUE THEN companies.company_uid END) * 100.0 
     / NULLIF(COUNT(DISTINCT companies.company_uid), 0), 
     2
-  ) AS active_company_percentage
+  )
     WITH SYNONYMS ('activity_rate', 'operational_rate')
     COMMENT = 'Percentage of companies that are currently active',
   
   -- Publication Activity Metrics
-  COUNT(publications.shab_id) AS total_publications
+  total_publications AS COUNT(publications.shab_id)
     WITH SYNONYMS ('publication_count', 'announcement_count', 'gazette_entries')
     COMMENT = 'Total number of SHAB publications',
   
-  COUNT(CASE WHEN publications.shab_date >= CURRENT_DATE() - INTERVAL '30 days' THEN publications.shab_id END) AS recent_publications
+  recent_publications AS COUNT(CASE WHEN publications.shab_date >= CURRENT_DATE() - INTERVAL '30 days' THEN publications.shab_id END)
     WITH SYNONYMS ('monthly_publications', 'recent_activity')
     COMMENT = 'Publications in the last 30 days',
   
-  COUNT(CASE WHEN EXTRACT(YEAR FROM publications.shab_date) = EXTRACT(YEAR FROM CURRENT_DATE()) THEN publications.shab_id END) AS this_year_publications
+  this_year_publications AS COUNT(CASE WHEN EXTRACT(YEAR FROM publications.shab_date) = EXTRACT(YEAR FROM CURRENT_DATE()) THEN publications.shab_id END)
     WITH SYNONYMS ('annual_publications', 'yearly_activity')
     COMMENT = 'Publications in the current year',
   
-  ROUND(
+  average_publications_per_company AS ROUND(
     COUNT(publications.shab_id)::FLOAT 
     / NULLIF(COUNT(DISTINCT publications.company_uid), 0), 
     2
-  ) AS average_publications_per_company
+  )
     WITH SYNONYMS ('publication_frequency', 'activity_ratio')
     COMMENT = 'Average number of publications per company',
   
   -- Formation and Dissolution Activity
-  COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END) AS company_formations
+  company_formations AS COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END)
     WITH SYNONYMS ('new_businesses', 'incorporations', 'startups')
     COMMENT = 'Number of company formations',
   
-  COUNT(CASE WHEN publications.activity_type = 'Dissolution' THEN publications.shab_id END) AS company_dissolutions
+  company_dissolutions AS COUNT(CASE WHEN publications.activity_type = 'Dissolution' THEN publications.shab_id END)
     WITH SYNONYMS ('business_closures', 'liquidations', 'terminations')
     COMMENT = 'Number of company dissolutions',
   
-  (COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END) -
-   COUNT(CASE WHEN publications.activity_type = 'Dissolution' THEN publications.shab_id END)) AS net_company_formation
+  net_company_formation AS (COUNT(CASE WHEN publications.activity_type = 'Formation' THEN publications.shab_id END) -
+   COUNT(CASE WHEN publications.activity_type = 'Dissolution' THEN publications.shab_id END))
     WITH SYNONYMS ('business_growth', 'net_incorporations')
     COMMENT = 'Net company formation (formations minus dissolutions)',
   
   -- Geographic Distribution
-  COUNT(DISTINCT publications.registry_office_canton) AS unique_cantons
+  unique_cantons AS COUNT(DISTINCT publications.registry_office_canton)
     WITH SYNONYMS ('canton_count', 'regional_coverage')
     COMMENT = 'Number of different Swiss cantons with registered companies',      
   
   -- Time-based Metrics
-  MAX(companies.days_since_registration) AS oldest_company_age_days
+  oldest_company_age_days AS MAX(companies.days_since_registration)
     WITH SYNONYMS ('maximum_age', 'longest_registered')
     COMMENT = 'Age in days of the oldest company in the system',
   
-  COUNT(DISTINCT CASE WHEN companies.registration_year = EXTRACT(YEAR FROM CURRENT_DATE()) THEN companies.company_uid END) AS companies_registered_this_year
+  companies_registered_this_year AS COUNT(DISTINCT CASE WHEN companies.registration_year = EXTRACT(YEAR FROM CURRENT_DATE()) THEN companies.company_uid END)
     WITH SYNONYMS ('new_registrations', 'current_year_formations')
     COMMENT = 'Number of companies registered in the current year'
 )
