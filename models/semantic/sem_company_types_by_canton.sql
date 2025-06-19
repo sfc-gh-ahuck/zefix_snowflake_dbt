@@ -35,10 +35,6 @@ RELATIONSHIPS (
     REFERENCES companies (company_uid)
 )
 FACTS (
-  companies.legal_form_id AS companies.legal_form_id
-    WITH SYNONYMS ('entity_type_id', 'business_form_id', 'legal_entity_id')
-    COMMENT = 'Numeric identifier for legal form (1-8)',
-  
   companies.days_since_registration AS DATEDIFF('day', companies.first_observed_shab_date, CURRENT_DATE())
     WITH SYNONYMS ('company_age_days', 'registration_age', 'business_age')
     COMMENT = 'Number of days since company first registration'
