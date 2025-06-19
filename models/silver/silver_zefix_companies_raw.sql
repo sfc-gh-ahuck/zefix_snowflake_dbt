@@ -67,7 +67,7 @@ SELECT
     -- Full content for reference
     content AS full_content_json
 
-FROM {{ source('zefix_raw', 'raw') }}
+FROM {{ source('bronze_zefix_shab', 'raw') }}
 WHERE content IS NOT NULL 
   AND content:uid IS NOT NULL
   AND content:shabDate IS NOT NULL
