@@ -22,7 +22,7 @@ SET SHARE_NAME = 'ZEFIX_DATA_PLATFORM_SHARE';
 
 -- Organization marketplace listing configuration
 SET LISTING_NAME = 'ZEFIX_SWISS_COMPANY_INTELLIGENCE';
-SET LISTING_CATEGORIES = ('Business & Finance', 'Government', 'Analytics');
+SET LISTING_CATEGORIES = 'Business & Finance,Government,Analytics';
 
 -- =====================================================
 -- ROLE AND PERMISSION CONFIGURATION
@@ -63,32 +63,20 @@ SET NOTIFICATION_EMAIL = 'data-team@yourcompany.com';  -- Update with your email
 SET ENABLE_NOTIFICATIONS = FALSE;        -- Set to TRUE to enable email notifications
 
 -- Regional availability (uncomment regions you want to support)
-SET SUPPORTED_REGIONS = (
-    'AWS_EU_CENTRAL_1'     -- Primary region for Swiss data
-    -- ,'AWS_US_EAST_1'    -- North America
-    -- ,'AZURE_WEST_EUROPE' -- Azure Europe
-    -- ,'GCP_EUROPE_WEST4'  -- Google Cloud Europe
-);
+SET SUPPORTED_REGIONS = 'AWS_EU_CENTRAL_1';     -- Primary region for Swiss data
+-- SET SUPPORTED_REGIONS = 'AWS_EU_CENTRAL_1,AWS_US_EAST_1';    -- Multiple regions
+-- SET SUPPORTED_REGIONS = 'AWS_EU_CENTRAL_1,AZURE_WEST_EUROPE';  -- Cross-cloud
+-- SET SUPPORTED_REGIONS = 'AWS_EU_CENTRAL_1,GCP_EUROPE_WEST4';   -- All clouds
 
 -- =====================================================
 -- SEMANTIC VIEWS CONFIGURATION
 -- =====================================================
 
 -- Semantic views to include in the share
-SET SEMANTIC_VIEWS = (
-    'sem_company_overview',
-    'sem_company_types_by_canton', 
-    'sem_business_changes',
-    'sem_geographic_analysis',
-    'sem_publication_activity'
-);
+SET SEMANTIC_VIEWS = 'sem_company_overview,sem_company_types_by_canton,sem_business_changes,sem_geographic_analysis,sem_publication_activity';
 
 -- Gold layer models to include
-SET GOLD_MODELS = (
-    'gold_company_overview',
-    'gold_company_activity', 
-    'gold_canton_statistics'
-);
+SET GOLD_MODELS = 'gold_company_overview,gold_company_activity,gold_canton_statistics';
 
 -- Sample data limits
 SET SAMPLE_COMPANY_LIMIT = 100;
@@ -101,31 +89,13 @@ SET SAMPLE_ACTIVITY_LIMIT = 100;
 
 -- Business context and descriptions
 SET BUSINESS_PURPOSE = 'Swiss Company Intelligence and Market Analysis';
-SET PRIMARY_USE_CASES = (
-    'Market Research & Competitive Analysis',
-    'Business Development & Lead Generation',
-    'Economic Research & Trend Analysis', 
-    'Compliance & Due Diligence',
-    'Geographic Market Expansion Planning'
-);
+SET PRIMARY_USE_CASES = 'Market Research & Competitive Analysis,Business Development & Lead Generation,Economic Research & Trend Analysis,Compliance & Due Diligence,Geographic Market Expansion Planning';
 
 -- Key differentiators
-SET KEY_FEATURES = (
-    'Cortex Analyst Ready Semantic Views',
-    'Complete Swiss Company Registry Data',
-    'Geographic Intelligence by Canton',
-    'Real-time Business Change Tracking',
-    'Natural Language Query Support'
-);
+SET KEY_FEATURES = 'Cortex Analyst Ready Semantic Views,Complete Swiss Company Registry Data,Geographic Intelligence by Canton,Real-time Business Change Tracking,Natural Language Query Support';
 
 -- Target audience
-SET TARGET_CONSUMERS = (
-    'Business Analysts',
-    'Market Researchers', 
-    'Investment Professionals',
-    'Compliance Teams',
-    'Economic Researchers'
-);
+SET TARGET_CONSUMERS = 'Business Analysts,Market Researchers,Investment Professionals,Compliance Teams,Economic Researchers';
 
 -- =====================================================
 -- PRICING AND MONETIZATION (Optional)
@@ -208,11 +178,11 @@ SELECT '
 • Schema: ' || $SHARE_SCHEMA_NAME || '
 • Source: ' || $SOURCE_DATABASE_NAME || '.' || $SOURCE_SCHEMA_NAME || '
 
-🏪 MARKETPLACE LISTING:
+🏪 ORGANIZATION MARKETPLACE LISTING:
 • Listing Name: ' || $LISTING_NAME || '
-• Category: ' || $LISTING_CATEGORY || '
-• Public: ' || $LISTING_PUBLIC || '
-• Auto-fulfillment: ' || $AUTO_FULFILLMENT || '
+• Categories: ' || $LISTING_CATEGORIES || '
+• Organization Profile: ' || $ORGANIZATION_PROFILE || '
+• Auto-fulfillment: ' || $AUTO_FULFILLMENT_SCHEDULE || '
 
 📊 DATA CONFIGURATION:
 • Classification: ' || $DATA_CLASSIFICATION || '
