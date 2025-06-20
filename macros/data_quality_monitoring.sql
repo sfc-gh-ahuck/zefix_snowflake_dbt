@@ -41,7 +41,7 @@
   {% endset %}
   {% do sql_statements.append(set_schedule_sql) %}
   
-  {# Get existing DMFs to determine if we should ADD or MODIFY #}
+  {# Get existing DMFs and expectations to determine what commands to use #}
   {% set get_existing_dmfs_query %}
     SELECT 
       metric_name,
@@ -52,34 +52,90 @@
     ))
   {% endset %}
   
+  {% set get_existing_expectations_query %}
+    SELECT 
+      metric_name,
+      ref_arguments,
+      expectation_name
+    FROM TABLE(INFORMATION_SCHEMA.DATA_METRIC_FUNCTION_EXPECTATIONS(
+      REF_ENTITY_NAME => '{{ table_ref.identifier.upper() }}',
+      REF_ENTITY_DOMAIN => 'table'
+    ))
+  {% endset %}
+  
   {% set existing_dmfs = {} %}
+  {% set existing_expectations = {} %}
   {% if execute %}
+    {# Get existing DMFs #}
     {% set dmf_results = run_query(get_existing_dmfs_query) %}
     {% for row in dmf_results %}
       {% set metric_name = row[0].split('.')[-1] %}
       {% set ref_args = row[1] %}
       {% if ref_args and ref_args|length > 0 %}
-        {% set column_name = ref_args[0] if ref_args[0] != 'TABLE()' else '' %}
+        {% set first_arg = ref_args[0] %}
+        {% if first_arg is mapping and first_arg.get('name') %}
+          {% set column_name = first_arg.name %}
+        {% elif first_arg is mapping and first_arg.get('domain') == 'TABLE' %}
+          {% set column_name = '' %}
+        {% else %}
+          {% set column_name = first_arg|string %}
+        {% endif %}
       {% else %}
         {% set column_name = '' %}
       {% endif %}
       {% set key = metric_name.upper() ~ '_' ~ column_name.upper() %}
       {% do existing_dmfs.update({key: true}) %}
     {% endfor %}
+    
+    {# Get existing expectations #}
+    {% set expectation_results = run_query(get_existing_expectations_query) %}
+    {% for row in expectation_results %}
+      {% set metric_name = row[0].split('.')[-1] %}
+      {% set ref_args = row[1] %}
+      {% set expectation_name = row[2] %}
+      {% if ref_args and ref_args|length > 0 %}
+        {% set first_arg = ref_args[0] %}
+        {% if first_arg is mapping and first_arg.get('name') %}
+          {% set column_name = first_arg.name %}
+        {% elif first_arg is mapping and first_arg.get('domain') == 'TABLE' %}
+          {% set column_name = '' %}
+        {% else %}
+          {% set column_name = first_arg|string %}
+        {% endif %}
+      {% else %}
+        {% set column_name = '' %}
+      {% endif %}
+      {% set key = metric_name.upper() ~ '_' ~ column_name.upper() ~ '_' ~ expectation_name.upper() %}
+      {% do existing_expectations.update({key: true}) %}
+    {% endfor %}
   {% endif %}
   
-  {# NULL Count Checks - Use ADD or MODIFY based on existence #}
+  {# NULL Count Checks - Handle DMF and expectation creation/modification #}
   {% if monitoring_config.get('null_checks') %}
     {% for null_check in monitoring_config.null_checks %}
       {% set expectation_name = 'null_check_' ~ null_check.column %}
       {% set dmf_key = 'NULL_COUNT_' ~ null_check.column.upper() %}
+      {% set expectation_key = dmf_key ~ '_' ~ expectation_name.upper() %}
+      
       {% if dmf_key in existing_dmfs %}
-        {% set sql_stmt %}
-          ALTER TABLE {{ table_ref }}
-            MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
-            ADD EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
-        {% endset %}
+        {# DMF exists - check if expectation exists #}
+        {% if expectation_key in existing_expectations %}
+          {# Both DMF and expectation exist - modify expectation #}
+          {% set sql_stmt %}
+            ALTER TABLE {{ table_ref }}
+              MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
+              MODIFY EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
+          {% endset %}
+        {% else %}
+          {# DMF exists but expectation doesn't - add expectation #}
+          {% set sql_stmt %}
+            ALTER TABLE {{ table_ref }}
+              MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
+              ADD EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
+          {% endset %}
+        {% endif %}
       {% else %}
+        {# DMF doesn't exist - add DMF with expectation #}
         {% set sql_stmt %}
           ALTER TABLE {{ table_ref }}
             ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
@@ -95,13 +151,27 @@
     {% set freshness_config = monitoring_config.freshness_check %}
     {% set max_age_seconds = freshness_config.max_age_hours * 3600 %}
     {% set dmf_key = 'FRESHNESS_' ~ freshness_config.column.upper() %}
+    {% set expectation_key = dmf_key ~ '_FRESHNESS_CHECK' %}
+    
     {% if dmf_key in existing_dmfs %}
-      {% set sql_stmt %}
-        ALTER TABLE {{ table_ref }}
-          MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
-          ADD EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
-      {% endset %}
+      {# DMF exists - check if expectation exists #}
+      {% if expectation_key in existing_expectations %}
+        {# Both DMF and expectation exist - modify expectation #}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
+            MODIFY EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
+        {% endset %}
+      {% else %}
+        {# DMF exists but expectation doesn't - add expectation #}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
+            ADD EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
+        {% endset %}
+      {% endif %}
     {% else %}
+      {# DMF doesn't exist - add DMF with expectation #}
       {% set sql_stmt %}
         ALTER TABLE {{ table_ref }}
           ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
@@ -123,13 +193,27 @@
     {% endif %}
     {% if expectation_expr %}
       {% set dmf_key = 'ROW_COUNT_' %}
+      {% set expectation_key = dmf_key ~ '_ROW_COUNT_CHECK' %}
+      
       {% if dmf_key in existing_dmfs %}
-        {% set sql_stmt %}
-          ALTER TABLE {{ table_ref }}
-            MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
-            ADD EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
-        {% endset %}
+        {# DMF exists - check if expectation exists #}
+        {% if expectation_key in existing_expectations %}
+          {# Both DMF and expectation exist - modify expectation #}
+          {% set sql_stmt %}
+            ALTER TABLE {{ table_ref }}
+              MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
+              MODIFY EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
+          {% endset %}
+        {% else %}
+          {# DMF exists but expectation doesn't - add expectation #}
+          {% set sql_stmt %}
+            ALTER TABLE {{ table_ref }}
+              MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
+              ADD EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
+          {% endset %}
+        {% endif %}
       {% else %}
+        {# DMF doesn't exist - add DMF with expectation #}
         {% set sql_stmt %}
           ALTER TABLE {{ table_ref }}
             ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
@@ -147,13 +231,27 @@
       {% set column_clause = '(' ~ custom_check.column ~ ')' if custom_check.get('column') else '(TABLE' ~ table_ref ~ '())' %}
       {% set dmf_name = custom_check.dmf.split('.')[-1] %}
       {% set dmf_key = dmf_name.upper() ~ '_' ~ (custom_check.column.upper() if custom_check.get('column') else '') %}
+      {% set expectation_key = dmf_key ~ '_' ~ expectation_name.upper() %}
+      
       {% if dmf_key in existing_dmfs %}
-        {% set sql_stmt %}
-          ALTER TABLE {{ table_ref }}
-            MODIFY DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
-            ADD EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
-        {% endset %}
+        {# DMF exists - check if expectation exists #}
+        {% if expectation_key in existing_expectations %}
+          {# Both DMF and expectation exist - modify expectation #}
+          {% set sql_stmt %}
+            ALTER TABLE {{ table_ref }}
+              MODIFY DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
+              MODIFY EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
+          {% endset %}
+        {% else %}
+          {# DMF exists but expectation doesn't - add expectation #}
+          {% set sql_stmt %}
+            ALTER TABLE {{ table_ref }}
+              MODIFY DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
+              ADD EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
+          {% endset %}
+        {% endif %}
       {% else %}
+        {# DMF doesn't exist - add DMF with expectation #}
         {% set sql_stmt %}
           ALTER TABLE {{ table_ref }}
             ADD DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
