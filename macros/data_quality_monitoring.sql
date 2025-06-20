@@ -41,15 +41,44 @@
   {% endset %}
   {% do sql_statements.append(set_schedule_sql) %}
   
-  {# NULL Count Checks - Use CREATE OR REPLACE pattern #}
+  {# Get existing DMFs to determine if we should ADD or MODIFY #}
+  {% set get_existing_dmfs_query %}
+    SELECT 
+      metric_name,
+      ref_entity_column_name
+    FROM TABLE(INFORMATION_SCHEMA.DATA_METRIC_FUNCTION_REFERENCES(
+      REF_ENTITY_NAME => '{{ table_ref.identifier.upper() }}',
+      REF_ENTITY_DOMAIN => 'table'
+    ))
+  {% endset %}
+  
+  {% set existing_dmfs = {} %}
+  {% if execute %}
+    {% set dmf_results = run_query(get_existing_dmfs_query) %}
+    {% for row in dmf_results %}
+      {% set key = row[0] ~ '_' ~ row[1] %}
+      {% do existing_dmfs.update({key: true}) %}
+    {% endfor %}
+  {% endif %}
+  
+  {# NULL Count Checks - Use ADD or MODIFY based on existence #}
   {% if monitoring_config.get('null_checks') %}
     {% for null_check in monitoring_config.null_checks %}
       {% set expectation_name = 'null_check_' ~ null_check.column %}
-      {% set sql_stmt %}
-        ALTER TABLE {{ table_ref }}
-          ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
-          EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
-      {% endset %}
+      {% set dmf_key = 'NULL_COUNT_' ~ null_check.column.upper() %}
+      {% if dmf_key in existing_dmfs %}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
+            ADD EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
+        {% endset %}
+      {% else %}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
+            EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
+        {% endset %}
+      {% endif %}
       {% do sql_statements.append(sql_stmt) %}
     {% endfor %}
   {% endif %}
@@ -58,11 +87,20 @@
   {% if monitoring_config.get('freshness_check') %}
     {% set freshness_config = monitoring_config.freshness_check %}
     {% set max_age_seconds = freshness_config.max_age_hours * 3600 %}
-    {% set sql_stmt %}
-      ALTER TABLE {{ table_ref }}
-        ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
-        EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
-    {% endset %}
+    {% set dmf_key = 'FRESHNESS_' ~ freshness_config.column.upper() %}
+    {% if dmf_key in existing_dmfs %}
+      {% set sql_stmt %}
+        ALTER TABLE {{ table_ref }}
+          MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
+          ADD EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
+      {% endset %}
+    {% else %}
+      {% set sql_stmt %}
+        ALTER TABLE {{ table_ref }}
+          ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
+          EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
+      {% endset %}
+    {% endif %}
     {% do sql_statements.append(sql_stmt) %}
   {% endif %}
   
@@ -77,11 +115,20 @@
       {% do expectation_expr.append('VALUE <= ' ~ row_config.max_rows) %}
     {% endif %}
     {% if expectation_expr %}
-      {% set sql_stmt %}
-        ALTER TABLE {{ table_ref }}
-          ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
-          EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
-      {% endset %}
+      {% set dmf_key = 'ROW_COUNT_' %}
+      {% if dmf_key in existing_dmfs %}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
+            ADD EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
+        {% endset %}
+      {% else %}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
+            EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
+        {% endset %}
+      {% endif %}
       {% do sql_statements.append(sql_stmt) %}
     {% endif %}
   {% endif %}
@@ -91,11 +138,21 @@
     {% for custom_check in monitoring_config.custom_checks %}
       {% set expectation_name = 'custom_' ~ loop.index %}
       {% set column_clause = '(' ~ custom_check.column ~ ')' if custom_check.get('column') else '(TABLE' ~ table_ref ~ '())' %}
-      {% set sql_stmt %}
-        ALTER TABLE {{ table_ref }}
-          ADD DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
-          EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
-      {% endset %}
+      {% set dmf_name = custom_check.dmf.split('.')[-1] %}
+      {% set dmf_key = dmf_name.upper() ~ '_' ~ (custom_check.column.upper() if custom_check.get('column') else '') %}
+      {% if dmf_key in existing_dmfs %}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            MODIFY DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
+            ADD EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
+        {% endset %}
+      {% else %}
+        {% set sql_stmt %}
+          ALTER TABLE {{ table_ref }}
+            ADD DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
+            EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
+        {% endset %}
+      {% endif %}
       {% do sql_statements.append(sql_stmt) %}
     {% endfor %}
   {% endif %}
