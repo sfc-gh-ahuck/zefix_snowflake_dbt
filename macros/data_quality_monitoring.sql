@@ -49,7 +49,7 @@
       {% set modify_sql_stmt %}
         ALTER TABLE {{ table_ref }}
           MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
-          SET EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
+          ADD EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
       {% endset %}
       {# Fallback to add if modify fails #}
       {% set add_sql_stmt %}
@@ -65,12 +65,12 @@
   {% if monitoring_config.get('freshness_check') %}
     {% set freshness_config = monitoring_config.freshness_check %}
     {% set max_age_seconds = freshness_config.max_age_hours * 3600 %}
-    {# Try to modify existing DMF first #}
-    {% set modify_freshness_sql %}
-      ALTER TABLE {{ table_ref }}
-        MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
-        SET EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
-    {% endset %}
+          {# Try to modify existing DMF first #}
+      {% set modify_freshness_sql %}
+        ALTER TABLE {{ table_ref }}
+          MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
+          ADD EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
+      {% endset %}
     {# Fallback to add if modify fails #}
     {% set add_freshness_sql %}
       ALTER TABLE {{ table_ref }}
@@ -95,7 +95,7 @@
       {% set modify_row_count_sql %}
         ALTER TABLE {{ table_ref }}
           MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
-          SET EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
+          ADD EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
       {% endset %}
       {# Fallback to add if modify fails #}
       {% set add_row_count_sql %}
@@ -116,7 +116,7 @@
       {% set modify_custom_sql %}
         ALTER TABLE {{ table_ref }}
           MODIFY DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
-          SET EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
+          ADD EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
       {% endset %}
       {# Fallback to add if modify fails #}
       {% set add_custom_sql %}
