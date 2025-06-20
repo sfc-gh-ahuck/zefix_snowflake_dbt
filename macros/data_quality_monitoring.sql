@@ -45,7 +45,7 @@
   {% set get_existing_dmfs_query %}
     SELECT 
       metric_name,
-      ref_entity_column_name
+      ref_arguments
     FROM TABLE(INFORMATION_SCHEMA.DATA_METRIC_FUNCTION_REFERENCES(
       REF_ENTITY_NAME => '{{ table_ref.identifier.upper() }}',
       REF_ENTITY_DOMAIN => 'table'
@@ -56,7 +56,14 @@
   {% if execute %}
     {% set dmf_results = run_query(get_existing_dmfs_query) %}
     {% for row in dmf_results %}
-      {% set key = row[0] ~ '_' ~ row[1] %}
+      {% set metric_name = row[0].split('.')[-1] %}
+      {% set ref_args = row[1] %}
+      {% if ref_args and ref_args|length > 0 %}
+        {% set column_name = ref_args[0] if ref_args[0] != 'TABLE()' else '' %}
+      {% else %}
+        {% set column_name = '' %}
+      {% endif %}
+      {% set key = metric_name.upper() ~ '_' ~ column_name.upper() %}
       {% do existing_dmfs.update({key: true}) %}
     {% endfor %}
   {% endif %}
