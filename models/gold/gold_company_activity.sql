@@ -6,6 +6,7 @@
     incremental_strategy='merge',
     merge_exclude_columns=['_loaded_at'],
     data_quality_config={
+      'schedule': '1 HOUR',
       'null_checks': [
         {'column': 'company_uid', 'max_nulls': 0},
         {'column': 'shab_id', 'max_nulls': 0},
@@ -13,6 +14,7 @@
         {'column': 'activity_type', 'max_nulls': 1000}
       ],
       'freshness_check': {'column': '_loaded_at', 'max_age_hours': 25},
+      'row_count': {'min_rows': 5000, 'max_rows': 100000000}
     },
     post_hook="{{ apply_data_quality_from_config() }}"
   )

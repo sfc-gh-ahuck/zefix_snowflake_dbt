@@ -34,6 +34,13 @@
   
   {% set sql_statements = [] %}
   
+  {# Set data metric schedule parameter on the table (configurable) #}
+  {% set schedule = monitoring_config.get('schedule', '6 HOUR') %}
+  {% set set_schedule_sql %}
+    ALTER TABLE {{ table_ref }} SET DATA_METRIC_SCHEDULE = '{{ schedule }}'
+  {% endset %}
+  {% do sql_statements.append(set_schedule_sql) %}
+  
   {# NULL Count Checks #}
   {% if monitoring_config.get('null_checks') %}
     {% for null_check in monitoring_config.null_checks %}
@@ -128,6 +135,12 @@
       {% endset %}
       {% do run_query(remove_sql) %}
     {% endfor %}
+    
+    {# Unset the data metric schedule parameter #}
+    {% set unset_schedule_sql %}
+      ALTER TABLE {{ ref(model_name) }} UNSET DATA_METRIC_SCHEDULE
+    {% endset %}
+    {% do run_query(unset_schedule_sql) %}
   {% endif %}
   
 {% endmacro %}
