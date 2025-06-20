@@ -1,27 +1,37 @@
-{% macro setup_data_quality_monitoring(model_name, monitoring_config) %}
+{% macro apply_data_quality_from_config() %}
   {# 
-    Macro to set up Snowflake Data Quality Monitoring using Data Metric Functions (DMFs) and Expectations
+    Macro to apply data quality monitoring based on model config
+    This is designed to be used in post-hooks to automatically apply monitoring
+    based on the data_quality_config defined in the model's config block
     
-    Parameters:
-    - model_name: Name of the model/table to monitor
-    - monitoring_config: Dictionary containing monitoring configuration
-    
-    Example usage:
-    {{ setup_data_quality_monitoring('gold_company_overview', {
-        'null_checks': [
-          {'column': 'company_uid', 'max_nulls': 0},
-          {'column': 'company_name', 'max_nulls': 10}
-        ],
-        'freshness_check': {'column': 'last_updated_at', 'max_age_hours': 24},
-        'row_count': {'min_rows': 1000, 'max_rows': 10000000},
-        'custom_checks': [
-          {'dmf': 'SNOWFLAKE.CORE.DUPLICATE_COUNT', 'column': 'company_uid', 'expectation': 'VALUE = 0'}
-        ]
-      }) 
+    Usage in model:
+    {{
+      config(
+        materialized='table',
+        data_quality_config={
+          'null_checks': [
+            {'column': 'company_uid', 'max_nulls': 0}
+          ],
+          'freshness_check': {'column': 'last_updated_at', 'max_age_hours': 24}
+        },
+        post_hook="{{ apply_data_quality_from_config() }}"
+      )
     }}
   #}
   
-  {% set full_model_name = ref(model_name) %}
+  {% if config.get('data_quality_config') %}
+    {% set monitoring_config = config.get('data_quality_config') %}
+    {{ setup_data_quality_monitoring_direct(this, monitoring_config) }}
+  {% endif %}
+  
+{% endmacro %}
+
+{% macro setup_data_quality_monitoring_direct(table_ref, monitoring_config) %}
+  {# 
+    Direct version that accepts a table reference to avoid circular dependencies
+    This is the core function that applies all monitoring rules
+  #}
+  
   {% set sql_statements = [] %}
   
   {# NULL Count Checks #}
@@ -29,7 +39,7 @@
     {% for null_check in monitoring_config.null_checks %}
       {% set expectation_name = 'null_check_' ~ null_check.column %}
       {% set sql_stmt %}
-        ALTER TABLE {{ full_model_name }}
+        ALTER TABLE {{ table_ref }}
           ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
           EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
       {% endset %}
@@ -42,7 +52,7 @@
     {% set freshness_config = monitoring_config.freshness_check %}
     {% set max_age_seconds = freshness_config.max_age_hours * 3600 %}
     {% set sql_stmt %}
-      ALTER TABLE {{ full_model_name }}
+      ALTER TABLE {{ table_ref }}
         ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
         EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
     {% endset %}
@@ -61,8 +71,8 @@
     {% endif %}
     {% if expectation_expr %}
       {% set sql_stmt %}
-        ALTER TABLE {{ full_model_name }}
-          ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ full_model_name }}())
+        ALTER TABLE {{ table_ref }}
+          ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
           EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
       {% endset %}
       {% do sql_statements.append(sql_stmt) %}
@@ -73,9 +83,9 @@
   {% if monitoring_config.get('custom_checks') %}
     {% for custom_check in monitoring_config.custom_checks %}
       {% set expectation_name = 'custom_' ~ loop.index %}
-      {% set column_clause = '(' ~ custom_check.column ~ ')' if custom_check.get('column') else '(TABLE' ~ full_model_name ~ '())' %}
+      {% set column_clause = '(' ~ custom_check.column ~ ')' if custom_check.get('column') else '(TABLE' ~ table_ref ~ '())' %}
       {% set sql_stmt %}
-        ALTER TABLE {{ full_model_name }}
+        ALTER TABLE {{ table_ref }}
           ADD DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
           EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
       {% endset %}
@@ -86,7 +96,6 @@
   {# Execute all SQL statements #}
   {% for sql_stmt in sql_statements %}
     {% if execute %}
-      {% do log("Setting up data quality monitoring: " ~ sql_stmt.strip(), info=true) %}
       {% do run_query(sql_stmt) %}
     {% endif %}
   {% endfor %}
@@ -101,8 +110,6 @@
     - model_name: Name of the model to remove monitoring from
   #}
   
-  {% set full_model_name = ref(model_name) %}
-  
   {# Query to get all existing DMF associations for the table #}
   {% set get_dmfs_query %}
     SELECT DISTINCT metric_name, ref_entity_name
@@ -116,10 +123,9 @@
     {% set dmf_results = run_query(get_dmfs_query) %}
     {% for dmf_row in dmf_results %}
       {% set remove_sql %}
-        ALTER TABLE {{ full_model_name }}
+        ALTER TABLE {{ ref(model_name) }}
           DROP DATA METRIC FUNCTION {{ dmf_row[0] }}
       {% endset %}
-      {% do log("Removing data quality monitoring: " ~ remove_sql.strip(), info=true) %}
       {% do run_query(remove_sql) %}
     {% endfor %}
   {% endif %}
@@ -144,10 +150,6 @@
   
   {% if execute %}
     {% set results = run_query(test_query) %}
-    {% do log("Data Quality Expectations Test Results for " ~ model_name ~ ":", info=true) %}
-    {% for result_row in results %}
-      {% do log("  " ~ result_row | join(" | "), info=true) %}
-    {% endfor %}
     {{ return(results) }}
   {% endif %}
   
@@ -177,5 +179,16 @@
   {% endset %}
   
   {{ return(violations_query) }}
+  
+{% endmacro %}
+
+{% macro get_model_data_quality_config(model_name) %}
+  {# 
+    Helper macro to get the data quality config for a specific model
+    This can be used to inspect what monitoring is configured for a model
+  #}
+  
+  {% set model_config = graph.nodes.get('model.' ~ project_name ~ '.' ~ model_name, {}).get('config', {}) %}
+  {{ return(model_config.get('data_quality_config', {})) }}
   
 {% endmacro %} 

@@ -4,7 +4,17 @@
     unique_key=['company_uid', 'shab_id'],
     on_schema_change='fail',
     incremental_strategy='merge',
-    merge_exclude_columns=['_loaded_at']
+    merge_exclude_columns=['_loaded_at'],
+    data_quality_config={
+      'null_checks': [
+        {'column': 'company_uid', 'max_nulls': 0},
+        {'column': 'shab_id', 'max_nulls': 0},
+        {'column': 'shab_date', 'max_nulls': 0},
+        {'column': 'activity_type', 'max_nulls': 1000}
+      ],
+      'freshness_check': {'column': '_loaded_at', 'max_age_hours': 25},
+    },
+    post_hook="{{ apply_data_quality_from_config() }}"
   )
 }}
 
