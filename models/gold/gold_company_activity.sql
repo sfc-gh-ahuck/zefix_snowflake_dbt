@@ -6,7 +6,7 @@
     incremental_strategy='merge',
     merge_exclude_columns=['_loaded_at'],
     data_quality_config={
-      'schedule': '1 HOUR',
+      'schedule': '60 MINUTE',
       'null_checks': [
         {'column': 'company_uid', 'max_nulls': 0},
         {'column': 'shab_id', 'max_nulls': 0},

@@ -35,7 +35,7 @@
   {% set sql_statements = [] %}
   
   {# Set data metric schedule parameter on the table (configurable) #}
-  {% set schedule = monitoring_config.get('schedule', '6 HOUR') %}
+  {% set schedule = monitoring_config.get('schedule', '360 MINUTE') %}
   {% set set_schedule_sql %}
     ALTER TABLE {{ table_ref }} SET DATA_METRIC_SCHEDULE = '{{ schedule }}'
   {% endset %}

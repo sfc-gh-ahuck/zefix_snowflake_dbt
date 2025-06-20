@@ -25,11 +25,11 @@ The data quality monitoring system now supports configurable schedules directly 
 
 #### **1. Time-Based Intervals**
 ```sql
-'schedule': '5 MINUTE'    # Every 5 minutes
-'schedule': '30 MINUTE'   # Every 30 minutes  
-'schedule': '1 HOUR'      # Every hour
-'schedule': '4 HOUR'      # Every 4 hours
-'schedule': '1 DAY'       # Daily
+'schedule': '5 MINUTE'     # Every 5 minutes
+'schedule': '30 MINUTE'    # Every 30 minutes  
+'schedule': '60 MINUTE'    # Every hour
+'schedule': '240 MINUTE'   # Every 4 hours
+'schedule': '1440 MINUTE'  # Daily
 ```
 
 #### **2. CRON Expressions**
@@ -54,7 +54,7 @@ The data quality monitoring system now supports configurable schedules directly 
 ```
 
 #### **4. Default Schedule**
-If no schedule is specified, defaults to `'6 HOUR'`
+If no schedule is specified, defaults to `'360 MINUTE'` (6 hours)
 
 ## 🏗️ **Real-World Examples**
 
@@ -108,15 +108,15 @@ If no schedule is specified, defaults to `'6 HOUR'`
 ## 📊 **Current Gold Model Configurations**
 
 ### **gold_company_overview**
-- **Schedule**: `1 HOUR` (hourly monitoring)
+- **Schedule**: `60 MINUTE` (hourly monitoring)
 - **Rationale**: Consistent hourly monitoring for company data changes
 
 ### **gold_company_activity** 
-- **Schedule**: `1 HOUR` (hourly monitoring)
+- **Schedule**: `60 MINUTE` (hourly monitoring)
 - **Rationale**: Activity data is high-volume, hourly checks are sufficient
 
 ### **gold_canton_statistics**
-- **Schedule**: `1 HOUR` (hourly monitoring)
+- **Schedule**: `60 MINUTE` (hourly monitoring)
 - **Rationale**: Consistent monitoring schedule across all gold models
 
 ## ⚙️ **Schedule Selection Guidelines**
@@ -129,7 +129,7 @@ If no schedule is specified, defaults to `'6 HOUR'`
 ### **Moderate Monitoring (15 minutes - 2 hours)**
 - **Use for**: Business reports, user analytics, standard operations
 - **Consider**: Good balance of freshness vs. cost
-- **Example**: `'30 MINUTE'`
+- **Example**: `'60 MINUTE'`
 
 ### **Scheduled Monitoring (Daily/Business Hours)**
 - **Use for**: Reference data, batch processing results, summary reports
@@ -174,7 +174,7 @@ When you change the schedule in your model config and re-run the model, the tabl
 {{
   config(
     data_quality_config={
-      'schedule': '5 MINUTE' if target.name == 'prod' else '1 HOUR',
+      'schedule': '5 MINUTE' if target.name == 'prod' else '60 MINUTE',
       'null_checks': [...]
     }
   )
