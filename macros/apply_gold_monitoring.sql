@@ -53,18 +53,9 @@
   } %}
   
   {# Apply monitoring to each gold model #}
-  {% do log("=== APPLYING DATA QUALITY MONITORING TO GOLD LAYER ===", info=true) %}
-  
-  {% do log("Setting up monitoring for gold_company_overview...", info=true) %}
   {{ setup_data_quality_monitoring('gold_company_overview', company_overview_config) }}
-  
-  {% do log("Setting up monitoring for gold_company_activity...", info=true) %}
   {{ setup_data_quality_monitoring('gold_company_activity', company_activity_config) }}
-  
-  {% do log("Setting up monitoring for gold_canton_statistics...", info=true) %}
   {{ setup_data_quality_monitoring('gold_canton_statistics', canton_statistics_config) }}
-  
-  {% do log("=== GOLD LAYER MONITORING SETUP COMPLETE ===", info=true) %}
   
 {% endmacro %}
 
@@ -73,18 +64,9 @@
     Macro to remove data quality monitoring from all Gold layer models
   #}
   
-  {% do log("=== REMOVING DATA QUALITY MONITORING FROM GOLD LAYER ===", info=true) %}
-  
-  {% do log("Removing monitoring from gold_company_overview...", info=true) %}
   {{ remove_data_quality_monitoring('gold_company_overview') }}
-  
-  {% do log("Removing monitoring from gold_company_activity...", info=true) %}
   {{ remove_data_quality_monitoring('gold_company_activity') }}
-  
-  {% do log("Removing monitoring from gold_canton_statistics...", info=true) %}
   {{ remove_data_quality_monitoring('gold_canton_statistics') }}
-  
-  {% do log("=== GOLD LAYER MONITORING REMOVAL COMPLETE ===", info=true) %}
   
 {% endmacro %}
 
@@ -93,17 +75,8 @@
     Macro to test data quality expectations for all Gold layer models
   #}
   
-  {% do log("=== TESTING DATA QUALITY EXPECTATIONS FOR GOLD LAYER ===", info=true) %}
-  
-  {% do log("Testing gold_company_overview expectations...", info=true) %}
   {{ test_data_quality_expectations('gold_company_overview') }}
-  
-  {% do log("Testing gold_company_activity expectations...", info=true) %}
-  {{ test_data_quality_expectations('gold_company_activity') %}
-  
-  {% do log("Testing gold_canton_statistics expectations...", info=true) %}
-  {{ test_data_quality_expectations('gold_canton_statistics') %}
-  
-  {% do log("=== GOLD LAYER EXPECTATIONS TESTING COMPLETE ===", info=true) %}
+  {{ test_data_quality_expectations('gold_company_activity') }}
+  {{ test_data_quality_expectations('gold_canton_statistics') }}
   
 {% endmacro %} 
