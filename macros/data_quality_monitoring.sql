@@ -41,46 +41,32 @@
   {% endset %}
   {% do sql_statements.append(set_schedule_sql) %}
   
-  {# NULL Count Checks - Try MODIFY first, then ADD if it fails #}
+  {# NULL Count Checks - Use CREATE OR REPLACE pattern #}
   {% if monitoring_config.get('null_checks') %}
     {% for null_check in monitoring_config.null_checks %}
       {% set expectation_name = 'null_check_' ~ null_check.column %}
-      {# Try to modify existing DMF first #}
-      {% set modify_sql_stmt %}
-        ALTER TABLE {{ table_ref }}
-          MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
-          ADD EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
-      {% endset %}
-      {# Fallback to add if modify fails #}
-      {% set add_sql_stmt %}
+      {% set sql_stmt %}
         ALTER TABLE {{ table_ref }}
           ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.NULL_COUNT ON ({{ null_check.column }})
           EXPECTATION {{ expectation_name }} (VALUE <= {{ null_check.max_nulls }})
       {% endset %}
-      {% do sql_statements.append({'modify': modify_sql_stmt, 'add': add_sql_stmt}) %}
+      {% do sql_statements.append(sql_stmt) %}
     {% endfor %}
   {% endif %}
   
-  {# Freshness Check - Try MODIFY first, then ADD if it fails #}
+  {# Freshness Check #}
   {% if monitoring_config.get('freshness_check') %}
     {% set freshness_config = monitoring_config.freshness_check %}
     {% set max_age_seconds = freshness_config.max_age_hours * 3600 %}
-          {# Try to modify existing DMF first #}
-      {% set modify_freshness_sql %}
-        ALTER TABLE {{ table_ref }}
-          MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
-          ADD EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
-      {% endset %}
-    {# Fallback to add if modify fails #}
-    {% set add_freshness_sql %}
+    {% set sql_stmt %}
       ALTER TABLE {{ table_ref }}
         ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.FRESHNESS ON ({{ freshness_config.column }})
         EXPECTATION freshness_check (VALUE <= {{ max_age_seconds }})
     {% endset %}
-    {% do sql_statements.append({'modify': modify_freshness_sql, 'add': add_freshness_sql}) %}
+    {% do sql_statements.append(sql_stmt) %}
   {% endif %}
   
-  {# Row Count Check - Try MODIFY first, then ADD if it fails #}
+  {# Row Count Check #}
   {% if monitoring_config.get('row_count') %}
     {% set row_config = monitoring_config.row_count %}
     {% set expectation_expr = [] %}
@@ -91,62 +77,33 @@
       {% do expectation_expr.append('VALUE <= ' ~ row_config.max_rows) %}
     {% endif %}
     {% if expectation_expr %}
-      {# Try to modify existing DMF first #}
-      {% set modify_row_count_sql %}
-        ALTER TABLE {{ table_ref }}
-          MODIFY DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
-          ADD EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
-      {% endset %}
-      {# Fallback to add if modify fails #}
-      {% set add_row_count_sql %}
+      {% set sql_stmt %}
         ALTER TABLE {{ table_ref }}
           ADD DATA METRIC FUNCTION SNOWFLAKE.CORE.ROW_COUNT ON (TABLE{{ table_ref }}())
           EXPECTATION row_count_check ({{ expectation_expr | join(' AND ') }})
       {% endset %}
-      {% do sql_statements.append({'modify': modify_row_count_sql, 'add': add_row_count_sql}) %}
+      {% do sql_statements.append(sql_stmt) %}
     {% endif %}
   {% endif %}
   
-  {# Custom DMF Checks - Try MODIFY first, then ADD if it fails #}
+  {# Custom DMF Checks #}
   {% if monitoring_config.get('custom_checks') %}
     {% for custom_check in monitoring_config.custom_checks %}
       {% set expectation_name = 'custom_' ~ loop.index %}
       {% set column_clause = '(' ~ custom_check.column ~ ')' if custom_check.get('column') else '(TABLE' ~ table_ref ~ '())' %}
-      {# Try to modify existing DMF first #}
-      {% set modify_custom_sql %}
-        ALTER TABLE {{ table_ref }}
-          MODIFY DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
-          ADD EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
-      {% endset %}
-      {# Fallback to add if modify fails #}
-      {% set add_custom_sql %}
+      {% set sql_stmt %}
         ALTER TABLE {{ table_ref }}
           ADD DATA METRIC FUNCTION {{ custom_check.dmf }} ON {{ column_clause }}
           EXPECTATION {{ expectation_name }} ({{ custom_check.expectation }})
       {% endset %}
-      {% do sql_statements.append({'modify': modify_custom_sql, 'add': add_custom_sql}) %}
+      {% do sql_statements.append(sql_stmt) %}
     {% endfor %}
   {% endif %}
   
-  {# Execute all SQL statements with modify-first, add-fallback logic #}
+  {# Execute all SQL statements #}
   {% for sql_stmt in sql_statements %}
     {% if execute %}
-      {% if sql_stmt is mapping and sql_stmt.get('modify') and sql_stmt.get('add') %}
-        {# Try MODIFY first, fallback to ADD if it fails #}
-        {% set modify_with_fallback %}
-          BEGIN
-            {{ sql_stmt.modify }};
-          EXCEPTION
-            WHEN STATEMENT_ERROR THEN
-              -- If MODIFY fails (DMF doesn't exist), try ADD
-              {{ sql_stmt.add }};
-          END;
-        {% endset %}
-        {% do run_query(modify_with_fallback) %}
-      {% else %}
-        {# Execute regular statements (like schedule setting) #}
-        {% do run_query(sql_stmt) %}
-      {% endif %}
+      {% do run_query(sql_stmt) %}
     {% endif %}
   {% endfor %}
   
