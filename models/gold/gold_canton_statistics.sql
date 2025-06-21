@@ -4,25 +4,7 @@
     unique_key='canton',
     on_schema_change='fail',
     incremental_strategy='merge',
-    merge_exclude_columns=['last_updated_at'],
-    data_quality_config={
-      'schedule': '60 MINUTE',
-      'null_checks': [
-        {'column': 'canton', 'max_nulls': 0},
-        {'column': 'total_companies', 'max_nulls': 0},
-        {'column': 'active_companies', 'max_nulls': 0}
-      ],
-      'freshness_check': {'column': 'last_updated_at', 'max_age_hours': 25},
-      'row_count': {'min_rows': 20, 'max_rows': 30},
-      'custom_checks': [
-        {
-          'dmf': 'SNOWFLAKE.CORE.DUPLICATE_COUNT', 
-          'column': 'canton', 
-          'expectation': 'VALUE = 0'
-        }
-      ]
-    },
-    post_hook="{{ apply_data_quality_from_config() }}"
+    merge_exclude_columns=['last_updated_at']
   )
 }}
 

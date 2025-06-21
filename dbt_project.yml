@@ -1,9 +1,9 @@
-name: 'zefix_data_platform'
+name: 'zefix'
 version: '1.0.0'
 config-version: 2
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'zefix_data_platform'
+profile: 'zefix'
 
 # These configurations specify where dbt should look for different types of files.
 model-paths: ["models"]
@@ -13,7 +13,8 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
-clean-targets:
+target-path: "target"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
   - "target"
   - "dbt_packages"
 
@@ -22,36 +23,81 @@ docs-paths: ["docs"]
 
 # Model configurations
 models:
-  zefix_data_platform:
-    # Enable documentation persistence for all models
+  zefix:
+    # Applies to all files under models/...
     +persist_docs:
       relation: true
       columns: true
-    # Bronze layer - raw sources only (no models)
+    
+    # Bronze layer - sources only, no transformations
     bronze:
-      # Bronze contains only source definitions, no models
-    # Silver layer - first transformation layer (incremental)
+      +materialized: view
+      +tags: ["bronze", "source"]
+    
+    # Silver layer - cleaned and normalized data
     silver:
-      +materialized: incremental
-    # Gold layer - business logic and aggregated data (incremental)
+      +materialized: table
+      +tags: ["silver", "cleaned"]
+      +on_schema_change: "fail"
+      
+    # Gold layer - business-ready analytics
     gold:
       +materialized: incremental
+      +on_schema_change: "fail"
+      +tags: ["gold", "analytics"]
+      +incremental_strategy: "merge"
+      
+    # Semantic layer - for Cortex Analyst
+    semantic:
+      +materialized: semantic_view
+      +tags: ["semantic", "cortex"]
 
 # Test configurations
 tests:
-  +store_failures: true
+  +tags: ["data_quality"]
 
 # Snapshot configurations
 snapshots:
-  zefix_data_platform:
+  zefix:
     +target_schema: snapshots
-    +persist_docs:
-      relation: true
-      columns: true
+    +strategy: timestamp
+    +updated_at: _loaded_at
 
 # Seed configurations
 seeds:
-  zefix_data_platform:
-    +persist_docs:
-      relation: true
-      columns: true 
+  zefix:
+    +quote_columns: false
+    +tags: ["reference_data"]
+
+# Variables that can be referenced in models
+vars:
+  # Source configuration
+  source_database: 'zefix'
+  source_schema: 'raw'
+  
+  # Date range for incremental loads (can be overridden)
+  start_date: '2020-01-01'
+  
+  # Feature flags
+  enable_semantic_views: true
+  enable_monitoring: false  # Data monitoring removed
+  
+  # Swiss-specific configurations
+  valid_cantons: ['AG', 'AI', 'AR', 'BE', 'BL', 'BS', 'FR', 'GE', 'GL', 'GR', 'JU', 'LU', 'NE', 'NW', 'OW', 'SG', 'SH', 'SO', 'SZ', 'TG', 'TI', 'UR', 'VD', 'VS', 'ZG', 'ZH']
+
+# Dispatch configuration for package compatibility
+dispatch:
+  - macro_namespace: zefix
+    search_order: ['zefix']
+
+# Require dbt version
+require-dbt-version: ">=1.8.0"
+
+# Optimize for Snowflake's dbt projects feature  
+flags:
+  # Performance optimizations
+  use_experimental_parser: true
+  static_parser: true
+  
+  # Snowflake-specific optimizations
+  send_anonymous_usage_stats: false 

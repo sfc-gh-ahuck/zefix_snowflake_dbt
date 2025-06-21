@@ -1,19 +1,23 @@
-zefix_data_platform:
-  target: dev
+zefix:
   outputs:
     dev:
       type: snowflake
-      account: 'not needed'
-      user: 'not needed'
-      role: accountadmin
-      database: ZEFIX
-      schema: DEV
-      warehouse: COMPUTE_WH
+      # Credentials are managed by Snowflake - no need to specify account, user, password
+      database: zefix
+      schema: dev
+      warehouse: zefix_dbt_wh
+      threads: 4
+      keepalives_idle: 30
+      search_path: 'zefix.dev'
+      
     prod:
       type: snowflake
-      account: 'not needed'
-      user: 'not needed'
-      role: accountadmin
-      database: ZEFIX
-      schema: PROD
-      warehouse: COMPUTE_WH
+      # Credentials are managed by Snowflake - no need to specify account, user, password  
+      database: zefix
+      schema: prod
+      warehouse: zefix_dbt_wh
+      threads: 8
+      keepalives_idle: 30
+      search_path: 'zefix.prod'
+      
+  target: dev

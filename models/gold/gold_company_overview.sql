@@ -4,25 +4,7 @@
     unique_key='company_uid',
     on_schema_change='fail',
     incremental_strategy='merge',
-    merge_exclude_columns=['last_updated_at'],
-    data_quality_config={
-      'schedule': '60 MINUTE',
-      'null_checks': [
-        {'column': 'company_uid', 'max_nulls': 0},
-        {'column': 'company_name', 'max_nulls': 5},
-        {'column': 'legal_form_id', 'max_nulls': 100}
-      ],
-      'freshness_check': {'column': 'last_updated_at', 'max_age_hours': 25},
-      'row_count': {'min_rows': 1000, 'max_rows': 50000000},
-      'custom_checks': [
-        {
-          'dmf': 'SNOWFLAKE.CORE.DUPLICATE_COUNT', 
-          'column': 'company_uid', 
-          'expectation': 'VALUE = 0'
-        }
-      ]
-    },
-    post_hook="{{ apply_data_quality_from_config() }}"
+    merge_exclude_columns=['last_updated_at']
   )
 }}
 

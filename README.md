@@ -1,185 +1,215 @@
 # ZEFIX Data Platform
 
-A dbt project for processing Swiss commercial register data from ZEFIX using the medallion architecture pattern.
+A dbt project for analyzing Swiss commercial register data using Snowflake's native dbt projects feature.
 
-## Overview
+## 🏗️ Architecture
 
-This project transforms raw ZEFIX (Swiss Central Business Names Index) data into analytics-ready tables using a three-layer medallion architecture:
+**Native Snowflake dbt Project** using workspaces and SQL commands
 
-- **Bronze Layer**: Raw data extraction from JSON variants
-- **Silver Layer**: Cleaned and structured data
-- **Gold Layer**: Business-ready analytics and metrics
+- **Bronze**: Raw data sources (JSON from ZEFIX API)
+- **Silver**: Cleaned and normalized data
+- **Gold**: Business-ready analytics tables
+- **Semantic**: Natural language views for Cortex Analyst
 
-## Data Source
-
-The project processes data from the ZEFIX Public API, which provides information about Swiss companies registered in the commercial register. The source data is stored in:
-
-- **Database**: `ZEFIX`
-- **Schema**: `PUBLIC`
-- **Table**: `RAW`
-- **Column**: `CONTENT` (Variant type containing JSON data)
-
-## Architecture
-
-### Bronze Layer
-- `bronze_zefix_companies`: Raw JSON data extracted into structured columns
+## 📊 Key Models
 
 ### Silver Layer
-- `silver_companies`: Cleaned company master data
-- `silver_shab_publications`: Normalized SHAB (Swiss Official Gazette) publications
-- `silver_mutation_types`: Individual mutation types from publications
+| Model | Description |
+|-------|-------------|
+| `silver_companies` | Cleaned company master data |
+| `silver_shab_publications` | SHAB publication records |
+| `silver_mutation_types` | Company change events |
 
 ### Gold Layer
-- `gold_company_overview`: Comprehensive company overview with business metrics
-- `gold_company_activity`: Company activity analysis over time
-- `gold_canton_statistics`: Canton-level aggregated statistics
+| Model | Description |
+|-------|-------------|
+| `gold_company_overview` | Comprehensive company profiles |
+| `gold_company_activity` | Company activity analysis |
+| `gold_canton_statistics` | Canton-level business metrics |
 
-### Seeds
-- `legal_forms`: Swiss legal form reference data with German/English names and abbreviations
+## 🚀 Quick Start
 
-## Setup Instructions
+### Prerequisites
+- Snowflake account with personal databases enabled
+- ACCOUNTADMIN privileges (for setup)
+- Git repository access
 
-### 1. Environment Setup
+### 1. Setup Snowflake Environment
+```sql
+-- Enable personal databases (requires ACCOUNTADMIN)
+ALTER ACCOUNT SET ENABLE_PERSONAL_DATABASE = TRUE;
 
-Create a `.env` file with your Snowflake credentials:
+-- Create database and schema
+CREATE DATABASE zefix;
+CREATE SCHEMA zefix.dev;
+CREATE SCHEMA zefix.prod;
 
-```bash
-export SNOWFLAKE_ACCOUNT=your_account
-export SNOWFLAKE_USER=your_username
-export SNOWFLAKE_PASSWORD=your_password
-export SNOWFLAKE_ROLE=your_role
-export SNOWFLAKE_DATABASE=ZEFIX
-export SNOWFLAKE_WAREHOUSE=your_warehouse
+-- Create warehouse
+CREATE WAREHOUSE zefix_dbt_wh
+  WITH WAREHOUSE_SIZE = 'XSMALL'
+       AUTO_SUSPEND = 300
+       AUTO_RESUME = TRUE;
 ```
 
-### 2. Install dbt Dependencies
-
-```bash
-dbt deps
+### 2. Create API Integration for Git
+```sql
+CREATE OR REPLACE API INTEGRATION zefix_git_integration
+  API_PROVIDER = git_https_api
+  API_ALLOWED_PREFIXES = ('https://github.com')
+  ENABLED = TRUE;
 ```
 
-### 3. Test Connection
+### 3. Create External Access Integration for Dependencies
+```sql
+-- Network rule for dbt dependencies
+CREATE OR REPLACE NETWORK RULE zefix_dbt_deps_network_rule
+  MODE = EGRESS
+  TYPE = HOST_PORT
+  VALUE_LIST = ('hub.getdbt.com:443', 'github.com:443', 'raw.githubusercontent.com:443');
 
-```bash
-dbt debug
+-- External access integration
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION zefix_dbt_deps_integration
+  ALLOWED_NETWORK_RULES = (zefix_dbt_deps_network_rule)
+  ENABLED = TRUE;
 ```
 
-### 4. Run the Pipeline
+### 4. Create Workspace in Snowsight
+1. Open Snowsight
+2. Go to Projects → Worksheets
+3. Create new workspace integrated with your Git repository
+4. Clone this repository into the workspace
 
-```bash
-# Run all models
-dbt run
+### 5. Deploy dbt Project Object
+```sql
+-- Create dbt project object from workspace
+CREATE OR REPLACE DBT PROJECT zefix.dev.zefix_dbt_project 
+  FROM snow://workspace/USER$<username>.PUBLIC."zefix_workspace"/versions/live/;
 
-# Run with tests
-dbt run && dbt test
+-- Install dependencies
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='deps';
 
-# Generate documentation
-dbt docs generate
-dbt docs serve
+-- Run the project
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run --target dev';
 ```
 
-## Data Dictionary
+### 6. Schedule with Tasks
+```sql
+-- Create scheduled task
+CREATE OR REPLACE TASK zefix.dev.zefix_dbt_hourly_run
+  WAREHOUSE = zefix_dbt_wh
+  SCHEDULE = '60 MINUTE'
+AS
+  EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run --target dev';
 
-### Key Fields
+-- Resume task
+ALTER TASK zefix.dev.zefix_dbt_hourly_run RESUME;
+```
 
-- **UID**: Unique Company Identification (format: CHE-###.###.###)
-- **CHID**: Company House Identification
-- **EHRAID**: Electronic HR Archive Identification
-- **Legal Form ID**: Numeric identifier for company legal structure
-- **SHAB**: Swiss Official Gazette of Commerce publications
-- **LOADED_AT**: Timestamp when record was loaded into source system (TIMESTAMP_TZ)
+## 🔧 Native Snowflake Commands
 
-### Legal Forms
+### Execute dbt Commands
+```sql
+-- Run all models
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run';
 
-Legal form mappings are maintained in the `legal_forms` seed with:
-- German names (e.g., Aktiengesellschaft, Gesellschaft mit beschränkter Haftung)
-- English translations (e.g., Stock Company, Limited Liability Company)
-- Standard abbreviations (e.g., AG, GmbH)
-- Detailed descriptions
+-- Run specific model
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run --select gold_company_overview';
 
-This ensures consistency across all models and enables easy maintenance of legal form information.
+-- Run tests
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='test';
 
-## Data Quality
+-- Build (run + test)
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='build';
+```
 
-The project includes comprehensive data quality tests:
+### Manage dbt Project Objects
+```sql
+-- Show dbt projects
+SHOW DBT PROJECTS;
 
-- **Uniqueness**: Company UIDs must be unique
-- **Format validation**: UIDs must follow CHE-###.###.### format
-- **Swiss ZIP codes**: Must be 4-digit format
-- **Canton codes**: Must be valid Swiss canton abbreviations
-- **Referential integrity**: Foreign key relationships maintained
+-- Describe project
+DESCRIBE DBT PROJECT zefix.dev.zefix_dbt_project;
 
-## Usage Examples
+-- List project files
+LIST 'snow://dbt/zefix.dev.zefix_dbt_project/versions/last/';
+```
+
+## 📈 Sample Queries
 
 ### Active Companies by Canton
 ```sql
-SELECT 
-  canton,
-  active_companies,
-  total_companies,
-  active_company_percentage
-FROM {{ ref('gold_canton_statistics') }}
+SELECT canton, active_companies, total_companies
+FROM zefix.dev.gold_canton_statistics
 ORDER BY active_companies DESC;
 ```
 
 ### Recent Company Activity
 ```sql
-SELECT 
-  company_name,
-  activity_type,
-  shab_date,
-  publication_message
-FROM {{ ref('gold_company_activity') }}
+SELECT company_name, activity_type, shab_date
+FROM zefix.dev.gold_company_activity
 WHERE recency_bucket = 'Last 30 days'
 ORDER BY shab_date DESC;
 ```
 
-### Company Overview
+## 🔍 Monitoring & Observability
+
+Enable logging and tracing:
 ```sql
-SELECT 
-  company_name,
-  legal_form_name,
-  full_address,
-  address_town,
-  is_active,
-  total_shab_publications,
-  days_since_last_publication
-FROM {{ ref('gold_company_overview') }}
-WHERE is_active = TRUE
-ORDER BY total_shab_publications DESC;
+ALTER SCHEMA zefix.dev SET LOG_LEVEL = 'INFO';
+ALTER SCHEMA zefix.dev SET TRACE_LEVEL = 'ALWAYS';
+ALTER SCHEMA zefix.dev SET METRIC_LEVEL = 'ALL';
 ```
 
-## API Reference
+View execution history:
+- Query History in Snowsight
+- Task History for scheduled runs
+- Event tables for detailed logging
 
-This project is based on the [ZEFIX Public API](https://www.zefix.admin.ch/ZefixPublicREST/swagger-ui/index.html#/Company/search).
+## 🧠 Semantic Views
 
-## Maintenance
+Natural language querying with Cortex Analyst:
+- `sem_company_overview` - Basic company information
+- `sem_publication_activity` - SHAB publication trends
+- `sem_business_changes` - Company mutations
+- `sem_geographic_analysis` - Canton-level insights
 
-### Incremental Updates
+## 📝 Data Dictionary
 
-All models use the `LOADED_AT` timestamp column for efficient incremental processing. This enables real-time processing of newly loaded data without the need for overlapping windows or complex change detection logic.
+**Key Fields:**
+- **UID**: Company ID (format: CHE-###.###.###)
+- **SHAB**: Swiss Official Gazette publications
+- **Legal Form**: Company type (AG, GmbH, etc.)
+- **Canton**: Swiss state/region
 
-**Incremental Strategy:**
-- **Silver Layer**: Uses `LOADED_AT > MAX(_loaded_at)` for precise incremental processing
-- **Gold Layer**: Processes records based on upstream `LOADED_AT` timestamps
-- **No Overlap**: Exact timestamp matching eliminates data duplication
-- **Real-time Ready**: Immediate processing of new source data
+## 🔗 Data Source
 
-### Monitoring
+[ZEFIX Public API](https://docs.snowflake.com/LIMITEDACCESS/dbt-projects-on-snowflake) - Swiss Federal Office of Justice
 
-Key metrics to monitor:
-- Number of records processed per layer
-- Data freshness (time since last update)
-- Test failure rates
-- Processing time per model
+## 📚 Features
 
-## Contributing
+- **Native Snowflake Integration**: No external dbt installation required
+- **Workspace IDE**: Web-based development environment
+- **Git Integration**: Version control built-in
+- **SQL Management**: Create and manage projects with SQL
+- **Task Scheduling**: Native Snowflake scheduling
+- **Observability**: Built-in logging, tracing, and metrics
+- **Cortex Integration**: AI-powered semantic views
 
-1. Follow the established naming conventions
-2. Add appropriate tests for new models
-3. Update documentation for schema changes
-4. Ensure data quality standards are maintained
+## 🔄 CI/CD Integration
 
-## Contact
+Use Snowflake CLI for CI/CD workflows:
+```bash
+# Deploy using Snowflake CLI
+snow dbt project create --database zefix --schema dev
+snow dbt project execute --args "run --target prod"
+```
 
-For questions about ZEFIX data, refer to the [official ZEFIX documentation](https://www.zefix.admin.ch/) or the Swiss Federal Statistical Office. 
+## ⚠️ Requirements
+
+- dbt Core 1.8.9+ (managed by Snowflake)
+- Personal databases enabled
+- API integration for Git repository
+- External access integration for dependencies
+- Workspace limit: 20,000 files per project
+
+Built with [Snowflake's native dbt projects](https://docs.snowflake.com/LIMITEDACCESS/dbt-projects-on-snowflake) feature. 
