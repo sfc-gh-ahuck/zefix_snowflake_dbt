@@ -55,13 +55,6 @@ Transform Swiss commercial register data into business-ready analytics.
 
 All models use `_loaded_at` timestamps for efficient incremental updates.
 
-**Pattern:**
-```sql
-{% if is_incremental() %}
-  WHERE _loaded_at > (SELECT MAX(_loaded_at) FROM {{ this }})
-{% endif %}
-```
-
 **Benefits:**
 - Real-time processing
 - Efficient resource usage
