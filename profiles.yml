@@ -6,10 +6,7 @@ zefix:
       role: accountadmin
       database: zefix
       schema: dev
-      warehouse: zefix_dbt_wh
-      threads: 4
-      keepalives_idle: 30
-      search_path: 'zefix.dev'
+      warehouse: task_wh
       
     prod:
       type: snowflake
@@ -17,9 +14,6 @@ zefix:
       role: accountadmin
       database: zefix
       schema: prod
-      warehouse: zefix_dbt_wh
-      threads: 8
-      keepalives_idle: 30
-      search_path: 'zefix.prod'
+      warehouse: task_wh
       
   target: dev
