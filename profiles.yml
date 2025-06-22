@@ -3,6 +3,7 @@ zefix:
     dev:
       type: snowflake
       # Credentials are managed by Snowflake - no need to specify account, user, password
+      role: accountadmin
       database: zefix
       schema: dev
       warehouse: zefix_dbt_wh
@@ -12,7 +13,8 @@ zefix:
       
     prod:
       type: snowflake
-      # Credentials are managed by Snowflake - no need to specify account, user, password  
+      # Credentials are managed by Snowflake - no need to specify account, user, password
+      role: accountadmin
       database: zefix
       schema: prod
       warehouse: zefix_dbt_wh
