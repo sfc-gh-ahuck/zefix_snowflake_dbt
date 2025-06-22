@@ -2,7 +2,8 @@ zefix:
   outputs:
     dev:
       type: snowflake
-      # Credentials are managed by Snowflake - no need to specify account, user, password
+      account: 'not needed'
+      user: 'not needed'
       role: accountadmin
       database: zefix
       schema: dev
@@ -10,7 +11,8 @@ zefix:
       
     prod:
       type: snowflake
-      # Credentials are managed by Snowflake - no need to specify account, user, password
+      account: 'not needed'
+      user: 'not needed'
       role: accountadmin
       database: zefix
       schema: prod
