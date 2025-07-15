@@ -32,9 +32,10 @@ CREATE SCHEMA IF NOT EXISTS zefix.raw
 
 -- Create warehouse
 CREATE WAREHOUSE IF NOT EXISTS zefix_dbt_wh
-  WITH WAREHOUSE_SIZE = 'MEDIUM'
+  WITH WAREHOUSE_SIZE = 'XSMALL'
        AUTO_SUSPEND = 300
-       AUTO_RESUME = TRUE;
+       AUTO_RESUME = TRUE
+       COMMENT = 'Warehouse for ZEFIX dbt project';
 ```
 
 ## Step 2: API Integration Setup
@@ -77,30 +78,7 @@ ALTER SCHEMA zefix.prod SET TRACE_LEVEL = 'ON_EVENT';
 ALTER SCHEMA zefix.prod SET METRIC_LEVEL = 'ALL';
 ```
 
-## Step 4: Create Source Data
-
-```sql
--- Create raw tables for ZEFIX data
-CREATE TABLE IF NOT EXISTS zefix.raw.zefix_companies_raw (
-  company_uid STRING,
-  company_name STRING,
-  company_status STRING,
-  is_active BOOLEAN,
-  legal_form_id INTEGER,
-  legal_seat STRING,
-  address_zip_code STRING,
-  address_town STRING,
-  shab_date DATE,
-  _loaded_at TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()
-);
-
--- Insert sample data (replace with actual data loading)
-INSERT INTO zefix.raw.zefix_companies_raw VALUES
-  ('CHE-123.456.789', 'Swiss Tech Solutions AG', 'ACTIVE', TRUE, 1, 'Zürich', '8001', 'Zürich', '2024-01-15', CURRENT_TIMESTAMP()),
-  ('CHE-987.654.321', 'Alpine Consulting GmbH', 'ACTIVE', TRUE, 2, 'Bern', '3003', 'Bern', '2024-01-10', CURRENT_TIMESTAMP());
-```
-
-## Step 5: Create Workspace
+## Step 4: Create Workspace in Snowsight
 
 ### In Snowsight:
 1. Navigate to **Projects** → **Worksheets**
@@ -108,7 +86,7 @@ INSERT INTO zefix.raw.zefix_companies_raw VALUES
 3. Create new workspace:
    - Choose **Git Repository**
    - Connect using the API integration created above
-   - Clone your ZELIX dbt repository
+   - Clone your ZEFIX dbt repository
 
 ### Workspace Configuration:
 - Name: `zefix_dbt_workspace`
@@ -116,7 +94,7 @@ INSERT INTO zefix.raw.zefix_companies_raw VALUES
 - Schema: `dev`
 - Warehouse: `zefix_dbt_wh`
 
-## Step 6: Prepare dbt Project
+## Step 5: Prepare dbt Project
 
 ### Update profiles.yml
 Ensure your `profiles.yml` exists in project root:
@@ -137,46 +115,44 @@ zefix:
   target: dev
 ```
 
-### Install Dependencies
-In the workspace terminal or via SQL:
+## Step 6: Deploy dbt Project Object
+
 ```sql
--- Create dbt project object first (temporary for deps)
-CREATE OR REPLACE DBT PROJECT zefix.dev.zefix_temp_project 
-  FROM snow://workspace/USER$<your_username>.PUBLIC."zefix_dbt_workspace"/versions/live/;
+-- Create dbt project object from workspace
+CREATE OR REPLACE DBT PROJECT zefix.dev.zefix_dbt_project 
+  FROM snow://workspace/USER$<username>.PUBLIC."zefix_workspace"/versions/live/;
 
 -- Install dependencies
-EXECUTE DBT PROJECT zefix.dev.zefix_temp_project args='deps';
-```
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='deps';
 
-## Step 7: Deploy dbt Project Object
-
-```sql
--- Create the main dbt project object
-CREATE OR REPLACE DBT PROJECT zefix.dev.zefix_dbt_project 
-  FROM snow://workspace/USER$<your_username>.PUBLIC."zefix_dbt_workspace"/versions/live/;
+-- Run the project
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run --target dev';
 
 -- Verify creation
 SHOW DBT PROJECTS LIKE 'zefix%';
 DESCRIBE DBT PROJECT zefix.dev.zefix_dbt_project;
 ```
 
-## Step 8: Execute dbt Commands
+## Step 7: Execute dbt Commands
 
 ```sql
--- Run initial build
-EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run --target dev';
+-- Run all models
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run';
+
+-- Run specific model
+EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='run --select gold_company_overview';
 
 -- Run tests
 EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='test';
 
--- Build everything (run + test)
+-- Build (run + test)
 EXECUTE DBT PROJECT zefix.dev.zefix_dbt_project args='build';
 ```
 
-## Step 9: Schedule Execution
+## Step 8: Schedule Execution
 
 ```sql
--- Create hourly task
+-- Create scheduled task
 CREATE OR REPLACE TASK zefix.dev.zefix_dbt_hourly_run
   WAREHOUSE = zefix_dbt_wh
   SCHEDULE = '60 MINUTE'
@@ -196,6 +172,29 @@ AS
 -- Resume tasks
 ALTER TASK zefix.dev.zefix_dbt_hourly_run RESUME;
 ALTER TASK zefix.dev.zefix_dbt_hourly_test RESUME;
+```
+
+## Step 9: Create Source Data (Optional for Testing)
+
+```sql
+-- Create raw tables for ZEFIX data
+CREATE TABLE IF NOT EXISTS zefix.raw.zefix_companies_raw (
+  company_uid STRING,
+  company_name STRING,
+  company_status STRING,
+  is_active BOOLEAN,
+  legal_form_id INTEGER,
+  legal_seat STRING,
+  address_zip_code STRING,
+  address_town STRING,
+  shab_date DATE,
+  _loaded_at TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- Insert sample data (replace with actual data loading)
+INSERT INTO zefix.raw.zefix_companies_raw VALUES
+  ('CHE-123.456.789', 'Swiss Tech Solutions AG', 'ACTIVE', TRUE, 1, 'Zürich', '8001', 'Zürich', '2024-01-15', CURRENT_TIMESTAMP()),
+  ('CHE-987.654.321', 'Alpine Consulting GmbH', 'ACTIVE', TRUE, 2, 'Bern', '3003', 'Bern', '2024-01-10', CURRENT_TIMESTAMP());
 ```
 
 ## Step 10: Verification
@@ -223,6 +222,39 @@ ORDER BY SCHEDULED_TIME DESC;
 
 -- Check dbt project status
 LIST 'snow://dbt/zefix.dev.zefix_dbt_project/versions/last/';
+
+-- Manage dbt Project Objects
+SHOW DBT PROJECTS;
+DESCRIBE DBT PROJECT zefix.dev.zefix_dbt_project;
+LIST 'snow://dbt/zefix.dev.zefix_dbt_project/versions/last/';
+```
+
+## CI/CD Integration
+
+### Using Snowflake CLI
+Use Snowflake CLI for automated deployment workflows:
+
+```bash
+# Deploy using Snowflake CLI
+snow dbt project create --database zefix --schema dev
+snow dbt project execute --args "run --target prod"
+```
+
+### GitHub Actions Example
+```yaml
+name: Deploy ZEFIX dbt Project
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy to Snowflake
+        run: |
+          snow dbt project create --database zefix --schema prod
+          snow dbt project execute --args "build --target prod"
 ```
 
 ## Troubleshooting
@@ -249,47 +281,15 @@ SHOW EXTERNAL ACCESS INTEGRATIONS;
 SHOW NETWORK RULES;
 ```
 
-**Task not running:**
+**Workspace file limits:**
+- Maximum 20,000 files per workspace
+- Consider .gitignore for large dependency folders
+
+**Task execution issues:**
 ```sql
 -- Check task status
 SHOW TASKS LIKE 'zefix%';
-SELECT SYSTEM$TASK_DEPENDENTS_ENABLE('zefix.dev.zefix_dbt_hourly_run');
-```
-
-## Advanced Configuration
-
-### Production Deployment
-```sql
--- Create production project object
-CREATE OR REPLACE DBT PROJECT zefix.prod.zefix_dbt_prod_project 
-  FROM snow://workspace/USER$<your_username>.PUBLIC."zefix_dbt_workspace"/versions/live/;
-
--- Production task
-CREATE OR REPLACE TASK zefix.prod.zefix_dbt_daily_prod
-  WAREHOUSE = zefix_dbt_wh
-  SCHEDULE = 'USING CRON 0 2 * * * UTC'
-AS
-  EXECUTE DBT PROJECT zefix.prod.zefix_dbt_prod_project args='build --target prod';
-```
-
-### CI/CD with Snowflake CLI
-```bash
-# Install Snowflake CLI
-pip install snowflake-cli-labs
-
-# Configure connection
-snow connection add --connection-name zefix --account <account> --user <user>
-
-# Deploy via CLI
-snow dbt project create zefix_dbt_project --database zefix --schema dev
-snow dbt project execute zefix_dbt_project --args "run --target prod"
-```
-
-## Next Steps
-
-1. **Set up monitoring**: Configure alerts for task failures
-2. **Implement CI/CD**: Use Snowflake CLI for automated deployments
-3. **Add semantic views**: Enable natural language querying
-4. **Create data shares**: Share insights across your organization
-
-For detailed documentation, see [Snowflake's dbt projects documentation](https://docs.snowflake.com/LIMITEDACCESS/dbt-projects-on-snowflake). 
+SELECT * FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY()) 
+WHERE NAME LIKE 'zefix%' 
+ORDER BY SCHEDULED_TIME DESC LIMIT 10;
+``` 
