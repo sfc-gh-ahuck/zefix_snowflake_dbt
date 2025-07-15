@@ -183,7 +183,7 @@ Natural language querying with Cortex Analyst:
 
 ## 🔗 Data Source
 
-[ZEFIX Public API](https://docs.snowflake.com/LIMITEDACCESS/dbt-projects-on-snowflake) - Swiss Federal Office of Justice
+[ZEFIX Public API](https://www.zefix.ch/en/search/shab/welcome) - Swiss Federal Office of Justice
 
 ## 📚 Features
 
