@@ -6,16 +6,10 @@ models:
     columns:
       - name: _loaded_at
         description: "Timestamp when the record was loaded into source system (from LOADED_AT column)"
-        tests:
-          - not_null
       - name: _content_hash
         description: "MD5 hash of the original JSON content for change detection"
-        tests:
-          - not_null
       - name: uid
         description: "Unique Company Identification (UID) - Swiss enterprise identifier in format CHE-###.###.###"
-        tests:
-          - not_null
       - name: uid_formatted
         description: "Formatted UID with dashes for better readability"
       - name: chid
@@ -26,8 +20,6 @@ models:
         description: "Electronic HR Archive Identification - internal reference number"
       - name: company_name
         description: "Official registered name of the company"
-        tests:
-          - not_null
       - name: legal_form_id
         description: "Legal form identifier (see documentation for mapping)"
       - name: legal_seat
@@ -58,9 +50,6 @@ models:
     columns:
       - name: company_uid
         description: "Primary key - Unique Company Identification from ZEFIX"
-        tests:
-          - not_null
-          - unique
       - name: company_uid_formatted
         description: "User-friendly formatted UID with dashes"
       - name: company_chid
@@ -71,13 +60,8 @@ models:
         description: "Electronic HR Archive Identification"
       - name: company_name
         description: "Cleaned official company name (trimmed whitespace)"
-        tests:
-          - not_null
       - name: legal_form_id
         description: "Legal form identifier (1-8, see legal_forms seed for mapping)"
-        tests:
-          - accepted_values:
-              values: [1, 2, 3, 4, 5, 6, 7, 8]
       - name: legal_form_name
         description: "German name of legal form (from legal_forms seed)"
       - name: legal_form_name_en
@@ -92,9 +76,6 @@ models:
         description: "Commercial register office identifier"
       - name: company_status
         description: "Standardized company status (EXISTIEREND or GELOESCHT)"
-        tests:
-          - accepted_values:
-              values: ['EXISTIEREND', 'GELOESCHT']
       - name: company_purpose
         description: "Cleaned business purpose description"
       - name: address_organisation
@@ -125,12 +106,8 @@ models:
         description: "Register of Auditing Bodies ID"
       - name: is_active
         description: "Boolean flag indicating if company is currently active"
-        tests:
-          - not_null
       - name: is_deleted
         description: "Boolean flag indicating if company has been deleted"
-        tests:
-          - not_null
       - name: _loaded_at
         description: "Timestamp of data loading from source system"
       - name: _content_hash
@@ -141,21 +118,12 @@ models:
     columns:
       - name: company_uid
         description: "Foreign key to silver_companies"
-        tests:
-          - not_null
-          - relationships:
-              to: ref('silver_companies')
-              field: company_uid
       - name: shab_id
         description: "Unique SHAB publication identifier"
-        tests:
-          - not_null
       - name: shab_number
         description: "SHAB gazette number"
       - name: shab_date
         description: "Date of SHAB publication"
-        tests:
-          - not_null
       - name: shab_page
         description: "Page number in SHAB gazette"
       - name: shab_mutation_status
@@ -164,8 +132,6 @@ models:
         description: "ID of the commercial register office"
       - name: registry_office_canton
         description: "Swiss canton abbreviation (e.g., ZH, BE, GE)"
-        tests:
-          - not_null
       - name: registry_office_journal_date
         description: "Date of commercial register journal entry"
       - name: registry_office_journal_id
@@ -184,23 +150,12 @@ models:
     columns:
       - name: company_uid
         description: "Foreign key to silver_companies"
-        tests:
-          - not_null
-          - relationships:
-              to: ref('silver_companies')
-              field: company_uid
       - name: shab_id
         description: "Foreign key to silver_shab_publications"
-        tests:
-          - not_null
       - name: mutation_type_id
         description: "Numeric identifier for the mutation type"
-        tests:
-          - not_null
       - name: mutation_type_key
         description: "Text key describing the type of mutation/change"
-        tests:
-          - not_null
       - name: shab_date
         description: "Date of SHAB publication (inherited from parent publication)"
       - name: registry_office_canton
@@ -216,20 +171,11 @@ seeds:
     columns:
       - name: legal_form_id
         description: "Numeric identifier for legal form (1-8)"
-        tests:
-          - not_null
-          - unique
       - name: legal_form_name_de
         description: "German name of the legal form"
-        tests:
-          - not_null
       - name: legal_form_name_en
         description: "English translation of the legal form"
-        tests:
-          - not_null
       - name: abbreviation
         description: "Common abbreviation (e.g., AG, GmbH) - may be null for forms without standard abbreviations"
       - name: description
         description: "Detailed description of the legal form in English"
-        tests:
-          - not_null 

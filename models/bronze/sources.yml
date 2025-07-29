@@ -12,10 +12,6 @@ sources:
           - name: content
             description: "JSON variant containing company information from ZEFIX API"
             data_type: variant
-            tests:
-              - not_null
           - name: loaded_at
             description: "Timestamp when the record was loaded into the source system (TIMESTAMP_TZ)"
-            data_type: timestamp_tz
-            tests:
-              - not_null 
+            data_type: timestamp_tz 

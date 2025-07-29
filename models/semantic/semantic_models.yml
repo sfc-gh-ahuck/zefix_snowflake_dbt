@@ -1,0 +1,118 @@
+version: 2
+
+semantic_models:
+  - name: companies
+    description: "Core semantic model for Swiss company data from ZEFIX registry"
+    model: ref('silver_companies')
+    
+    # Primary entity for this semantic model
+    entities:
+      - name: company
+        type: primary
+        expr: company_uid
+        
+    # Time dimensions for temporal analysis
+    dimensions:
+      - name: registration_date
+        type: time
+        expr: first_observed_shab_date
+        type_params:
+          time_granularity: day
+      
+      - name: registration_year
+        type: time
+        expr: first_observed_shab_date
+        type_params:
+          time_granularity: year
+      
+      # Categorical dimensions
+      - name: legal_form
+        type: categorical
+        expr: legal_form_name
+        
+      - name: legal_form_abbreviation
+        type: categorical
+        expr: abbreviation
+        
+      - name: company_status
+        type: categorical
+        expr: company_status
+        
+      - name: is_active
+        type: categorical
+        expr: is_active
+        
+      - name: legal_seat
+        type: categorical
+        expr: legal_seat
+        
+      - name: address_town
+        type: categorical
+        expr: address_town
+        
+      - name: company_name
+        type: categorical
+        expr: company_name
+
+    # Measures that can be aggregated
+    measures:
+      - name: total_companies
+        agg: count_distinct
+        expr: company_uid
+        description: "Total number of unique companies"
+        
+      - name: company_count
+        agg: count_distinct
+        expr: company_uid
+        description: "Count of companies for filtered metrics"
+
+  - name: publications
+    description: "Semantic model for SHAB publication activity and business events"
+    model: ref('silver_shab_publications')
+    
+    entities:
+      - name: publication
+        type: primary
+        expr: publication_id
+        
+      - name: company
+        type: foreign
+        expr: company_uid
+        
+    dimensions:
+      - name: publication_date
+        type: time
+        expr: shab_date
+        type_params:
+          time_granularity: day
+          
+      - name: publication_year
+        type: time
+        expr: shab_date
+        type_params:
+          time_granularity: year
+          
+      - name: publication_month
+        type: time
+        expr: shab_date
+        type_params:
+          time_granularity: month
+      
+      - name: mutation_type
+        type: categorical
+        expr: mutation_type
+        
+      - name: activity_type
+        type: categorical
+        expr: activity_type
+        
+    measures:
+      - name: total_publications
+        agg: count_distinct
+        expr: publication_id
+        description: "Total number of SHAB publications"
+        
+      - name: publication_count
+        agg: count_distinct
+        expr: publication_id
+        description: "Count of publications for filtered metrics"

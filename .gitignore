@@ -1,6 +1,7 @@
 # dbt specific
 target/
-dbt_packages/
+dbt_packages/*
+!dbt_packages/dbt_semantic_view_converter/
 logs/
 .dbt/
 

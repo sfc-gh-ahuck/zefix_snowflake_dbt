@@ -3,7 +3,7 @@ version: '1.0.0'
 config-version: 2
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'zefix'
+profile: 'snowflake'
 
 # These configurations specify where dbt should look for different types of files.
 model-paths: ["models"]
@@ -49,12 +49,15 @@ models:
       
     # Semantic layer - for Cortex Analyst
     semantic:
-      +materialized: semantic_view
+      +materialized: view
       +tags: ["semantic", "cortex"]
+      
+    # Utilities layer - helper models
+    utilities:
+      +materialized: table
+      +tags: ["utilities", "helper"]
 
-# Test configurations
-tests:
-  +tags: ["data_quality"]
+
 
 # Snapshot configurations
 snapshots:

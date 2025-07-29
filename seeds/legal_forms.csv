@@ -1,0 +1,9 @@
+legal_form_id,legal_form_name_de,legal_form_name_en,abbreviation,description
+1,Einzelunternehmen,Sole Proprietorship,,A business owned and operated by one individual
+2,Kollektivgesellschaft,General Partnership,,"Partnership where all partners have unlimited liability"
+3,Aktiengesellschaft,Stock Corporation,AG,"Limited liability company with share capital divided into shares"
+4,Kommanditgesellschaft,Limited Partnership,,"Partnership with at least one general partner and one limited partner"
+5,Gesellschaft mit beschränkter Haftung,Limited Liability Company,GmbH,"Limited liability company with capital divided into shares"
+6,Genossenschaft,Cooperative,,"Association of persons or companies for mutual economic benefit"
+7,Verein,Association,,"Non-profit organization for non-commercial purposes"
+8,Stiftung,Foundation,,"Legal entity established to serve a particular purpose with dedicated assets" 

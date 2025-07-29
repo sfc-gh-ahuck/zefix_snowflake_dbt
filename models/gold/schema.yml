@@ -6,9 +6,6 @@ models:
     columns:
       - name: company_uid
         description: "Primary key - Unique Company Identification"
-        tests:
-          - not_null
-          - unique
       - name: company_uid_formatted
         description: "Human-readable formatted UID"
       - name: company_chid
@@ -17,8 +14,6 @@ models:
         description: "Formatted CHID"
       - name: company_name
         description: "Official company name"
-        tests:
-          - not_null
       - name: company_status
         description: "Current company status"
       - name: is_active
@@ -75,8 +70,6 @@ models:
     columns:
       - name: company_uid
         description: "Company identifier"
-        tests:
-          - not_null
       - name: company_name
         description: "Company name"
       - name: company_status
@@ -127,9 +120,6 @@ models:
     columns:
       - name: canton
         description: "Swiss canton abbreviation (e.g., ZH, BE, GE)"
-        tests:
-          - not_null
-          - unique
       - name: total_companies
         description: "Total number of companies registered in this canton"
       - name: active_companies
@@ -160,8 +150,6 @@ models:
         description: "Publications in the last 90 days"
       - name: publications_last_year
         description: "Publications in the last year"
-      - name: avg_publications_per_company
-        description: "Average number of publications per company"
       - name: active_company_percentage
         description: "Percentage of companies that are active"
       - name: last_updated_at

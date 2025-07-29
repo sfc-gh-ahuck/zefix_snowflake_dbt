@@ -1,4 +1,4 @@
-zefix:
+snowflake:
   outputs:
     dev:
       type: snowflake
